@@ -1,0 +1,581 @@
+<title>Lanzador Claude</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: desktop-app shell — top bar, collapsible nav rail, folder tree, options pane, command footer */
+:root{
+  --primary:#006EB3; --primary-ink:#ffffff; --primary-soft:#e3f0f9; --pin:#7B3FE4; --pin-soft:#efe8fd;
+  --bg:#eef2f6; --surface:#ffffff; --surface-2:#f6f8fb; --line:#dde3ea; --line-soft:#edf1f5;
+  --fg:#1b2533; --muted:#5d6b7c; --faint:#94a1b1; --warn:#b45309; --ok:#047857; --ok-soft:#e6f6ef;
+  --code-bg:#0e1726; --code-fg:#9fd2ff; --tip-bg:#1b2533; --tip-fg:#ffffff; --shadow:0 10px 30px rgba(16,40,70,.12);
+  --f-ui:"Roboto","Segoe UI",system-ui,sans-serif; --f-mono:"Roboto Mono",Consolas,"Cascadia Mono",monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --primary:#2b8fd6; --primary-ink:#ffffff; --primary-soft:#163049; --pin:#9a6bff; --pin-soft:#2a2245;
+  --bg:#121821; --surface:#1a222d; --surface-2:#202a37; --line:#2c3847; --line-soft:#243040;
+  --fg:#e5ebf2; --muted:#9aa8b8; --faint:#6b7a8c; --warn:#f0a050; --ok:#4cc69a; --ok-soft:#173a2f;
+  --code-bg:#0a1018; --code-fg:#9fd2ff; --tip-bg:#e5ebf2; --tip-fg:#121821; --shadow:0 10px 30px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --primary:#2b8fd6; --primary-ink:#ffffff; --primary-soft:#163049; --pin:#9a6bff; --pin-soft:#2a2245;
+  --bg:#121821; --surface:#1a222d; --surface-2:#202a37; --line:#2c3847; --line-soft:#243040;
+  --fg:#e5ebf2; --muted:#9aa8b8; --faint:#6b7a8c; --warn:#f0a050; --ok:#4cc69a; --ok-soft:#173a2f;
+  --code-bg:#0a1018; --code-fg:#9fd2ff; --tip-bg:#e5ebf2; --tip-fg:#121821; --shadow:0 10px 30px rgba(0,0,0,.45); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:13px}
+.page{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px;display:flex;flex-direction:column;gap:12px;max-width:1400px;margin:0 auto}
+.note{color:var(--muted);font-size:12.5px;line-height:1.5;max-width:90ch}
+.note b{color:var(--fg)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+
+.app{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;height:680px;min-height:0}
+.top{display:flex;align-items:center;gap:12px;background:var(--primary);color:var(--primary-ink);padding:8px 12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:500;font-size:14px;white-space:nowrap}
+.logo{background:#fff;color:#006EB3;font-weight:700;border-radius:6px;padding:3px 9px;letter-spacing:.4px;font-size:13px}
+.search{flex:1;min-width:140px;max-width:420px;margin:0 auto;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.17);border-radius:6px;padding:5px 10px;color:rgba(255,255,255,.85)}
+.search kbd{margin-left:auto;font-family:var(--f-mono);font-size:11px;background:rgba(255,255,255,.18);border-radius:4px;padding:1px 5px}
+.tbtn{background:rgba(255,255,255,.14);border:0;border-radius:6px;padding:5px 9px;color:#fff;display:flex;align-items:center;gap:6px}
+.tbtn:hover{background:rgba(255,255,255,.26)}
+select.tbtn option{color:#1b2533}
+
+.body{flex:1;display:flex;min-height:0}
+.nav{width:196px;flex:none;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:8px 0;transition:width .18s ease}
+.nav.min{width:56px}
+.nav button{display:flex;align-items:center;gap:12px;background:none;border:0;border-left:3px solid transparent;padding:9px 16px;color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;width:100%}
+.nav button:hover{background:var(--surface-2);color:var(--fg)}
+.nav button.on{background:var(--primary-soft);color:var(--primary);border-left-color:var(--primary);font-weight:500}
+.nav svg{flex:none;width:18px;height:18px}
+.nav .lbl{transition:opacity .12s}
+.nav.min .lbl{opacity:0;pointer-events:none}
+.nav .spacer{flex:1}
+.nav .collapse{border-top:1px solid var(--line-soft);margin-top:4px}
+.nav.min .collapse svg{transform:rotate(180deg)}
+
+.tree{width:262px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--surface)}
+.sect{padding:10px 14px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;align-items:center}
+.sect .lnk{background:none;border:0;color:var(--primary);text-transform:none;letter-spacing:0;font-size:12px;font-weight:500;padding:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px}
+.chip{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--fg)}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+.chip .star{color:#e8a317}
+.rootbox{margin:0 14px 6px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px;font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+.tlist{flex:1;overflow:auto;padding:0 6px 10px}
+.tn{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;color:var(--fg)}
+.tn:hover{background:var(--surface-2)}
+.tn.sel{background:var(--primary);color:var(--primary-ink)}
+.tn .car{width:12px;color:var(--faint);flex:none;text-align:center}
+.tn.sel .car{color:var(--primary-ink)}
+.tn svg{width:15px;height:15px;flex:none;color:var(--primary)}
+.tn.sel svg{color:var(--primary-ink)}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg)}
+.info{margin:12px 14px 0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.info .p{font-family:var(--f-mono);font-weight:500;font-size:13.5px;word-break:break-all}
+.info .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.badge{font-size:11.5px;border-radius:10px;padding:2px 9px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted)}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;font-weight:500;color:var(--fg);white-space:nowrap}
+.btn:hover{border-color:var(--primary);color:var(--primary)}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:var(--primary-ink);padding:8px 22px}
+.btn.pri:hover{filter:brightness(1.08);color:var(--primary-ink)}
+.ml{margin-left:auto}
+
+.tabs{display:flex;gap:2px;margin:12px 14px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-end}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:8px 14px;color:var(--muted)}
+.tab.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:500}
+.tab .n{background:var(--surface-2);border-radius:9px;padding:0 6px;margin-left:5px;font-size:11px}
+.tab.on .n{background:var(--primary-soft)}
+.target{margin-left:auto;display:flex;gap:6px;align-items:center;color:var(--muted);padding-bottom:5px}
+.sel2{border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--surface);color:var(--fg);font:inherit}
+.prof{margin:10px 14px 0;display:flex;gap:8px;align-items:center;color:var(--muted);flex-wrap:wrap}
+.prof .lnk{background:none;border:0;color:var(--primary);padding:0;font-size:12px}
+
+.opts{flex:1;overflow:auto;margin:8px 14px 12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;min-height:0}
+.grp{padding:7px 14px;background:var(--surface-2);font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line-soft);position:sticky;top:0;z-index:1}
+.row{display:flex;align-items:center;gap:8px;padding:7px 14px;border-bottom:1px solid var(--line-soft);position:relative}
+.row:hover{background:var(--surface-2)}
+.cb{width:17px;height:17px;border-radius:4px;border:2px solid var(--line);background:var(--surface);flex:none;padding:0;display:inline-flex;align-items:center;justify-content:center}
+.cb svg{width:11px;height:11px;opacity:0;color:#fff}
+.cb.pin{border-color:var(--pin);opacity:.55}
+.cb.pin:hover{opacity:1}
+.cb.pin.on{background:var(--pin);opacity:1}
+.cb.chk{border-color:color-mix(in srgb,var(--primary) 55%,var(--line))}
+.cb.chk.on{background:var(--primary);border-color:var(--primary)}
+.cb.on svg{opacity:1}
+.flag{font-family:var(--f-mono);font-size:12.5px;cursor:help;white-space:nowrap}
+.flag.warn{color:var(--warn)}
+.desc{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.val{margin-left:auto;flex:none}
+.val input,.val select{border:1px solid var(--line);border-radius:5px;padding:3px 7px;font:inherit;font-size:12px;background:var(--surface);color:var(--fg);width:150px}
+.tip{position:absolute;left:62px;top:calc(100% - 2px);z-index:20;background:var(--tip-bg);color:var(--tip-fg);padding:9px 11px;border-radius:7px;font-size:12px;line-height:1.45;width:min(340px,80vw);box-shadow:var(--shadow);pointer-events:none}
+.tip b{font-family:var(--f-mono);font-weight:500}
+
+.foot{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border-top:1px solid var(--line);flex-wrap:wrap}
+.cmd{flex:1;min-width:0;font-family:var(--f-mono);font-size:12px;background:var(--code-bg);color:var(--code-fg);border-radius:6px;padding:9px 11px;white-space:nowrap;overflow-x:auto}
+
+.placeholder{margin:14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:22px;display:flex;flex-direction:column;gap:10px;max-width:640px}
+.placeholder h3{margin:0;font-size:16px;font-weight:500}
+.placeholder p{margin:0;color:var(--muted);line-height:1.55}
+
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--tip-bg);color:var(--tip-fg);padding:9px 16px;border-radius:7px;box-shadow:var(--shadow);font-size:13px;z-index:50}
+
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,35,.45);display:flex;align-items:center;justify-content:center;z-index:40;padding:16px}
+.modal{background:var(--surface);border-radius:12px;box-shadow:var(--shadow);width:min(440px,100%);overflow:hidden}
+.modal .mh{background:var(--primary);color:var(--primary-ink);padding:20px 22px;display:flex;align-items:center;gap:12px}
+.modal .mh .logo{font-size:16px;padding:5px 12px}
+.modal .mh h3{margin:0;font-weight:500;font-size:17px}
+.modal .mh small{opacity:.85}
+.modal .mb{padding:18px 22px;display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center}
+.modal .mb dt{color:var(--muted);font-size:12px}
+.modal .mb dd{margin:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.modal a{color:var(--primary)}
+.modal .mf{padding:12px 22px 18px;display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;gap:10px;flex-wrap:wrap}
+.mini{border:1px solid var(--line);background:var(--surface-2);border-radius:5px;padding:2px 8px;font-size:11.5px}
+.mono{font-family:var(--f-mono)}
+
+.legend{display:flex;gap:18px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:12.5px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .cb{pointer-events:none}
+
+.status{display:flex;align-items:center;gap:8px;padding:5px 14px;border-top:1px solid var(--line);background:var(--surface-2);font-size:12px;color:var(--muted)}
+.status .dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.status.ok .dot{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.status.ok #engine{color:var(--ok);font-weight:500}
+.status .ml{font-family:var(--f-mono);font-size:11px}
+.madewith{color:var(--muted);font-size:12.5px;padding:0 22px 4px}
+
+.story{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px 40px;padding-block:24px 8px;border-top:1px solid var(--line);margin-top:8px}
+.story .lead{grid-column:1/-1;max-width:72ch}
+.story h2{margin:0 0 8px;font-size:22px;font-weight:500;text-wrap:balance;color:var(--fg)}
+.story h3{margin:0 0 8px;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.8px;color:var(--primary)}
+.story p,.story li{margin:0;line-height:1.65;color:var(--fg);font-size:14px;max-width:65ch}
+.story p+p{margin-top:10px}
+.story ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+.story a{color:var(--primary);font-weight:500}
+.story .lead p{font-size:15.5px;color:var(--muted)}
+.story code{font-family:var(--f-mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:4px;padding:0 4px}
+.story .sig{grid-column:1/-1;color:var(--muted);font-size:13px;border-top:1px solid var(--line-soft);padding-top:14px}
+
+@media (max-width:900px){
+  .app{height:auto}
+  .body{flex-direction:column}
+  .nav{width:100%!important;flex-direction:row;overflow-x:auto;padding:0;border-right:0;border-bottom:1px solid var(--line)}
+  .nav button{width:auto;border-left:0;border-bottom:3px solid transparent;padding:10px 12px}
+  .nav button.on{border-bottom-color:var(--primary)}
+  .nav .lbl{opacity:1!important}
+  .nav .spacer,.nav .collapse{display:none}
+  .tree{width:100%;max-height:260px;border-right:0;border-bottom:1px solid var(--line)}
+  .opts{max-height:460px}
+  .target{margin-left:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="page">
+  <p class="note" id="intro"></p>
+
+  <div class="app" id="app">
+    <div class="top">
+      <div class="brand"><span class="logo">iDeo</span><span id="appname"></span></div>
+      <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span id="searchph"></span><kbd>Ctrl K</kbd></div>
+      <select class="tbtn" id="lang" aria-label="Idioma"><option value="es">Español</option><option value="en">English</option><option value="zh">中文</option></select>
+      <button class="tbtn" id="theme" aria-label="Tema"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </div>
+    <div class="body">
+      <nav class="nav" id="nav"></nav>
+      <div class="tree" id="treeCol">
+        <div class="sect" id="recTitle"></div>
+        <div class="chips" id="chips"></div>
+        <div class="sect"><span id="foldTitle"></span><button class="lnk" id="chRoot"></button></div>
+        <div class="rootbox" id="rootbox">C:\Desarrollo</div>
+        <div class="tlist" id="tree"></div>
+      </div>
+      <div class="main" id="main"></div>
+    </div>
+    <div class="status" id="status" role="status"><span class="dot"></span><span id="engine"></span><span class="ml">v0.1.0</span></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <section class="story" id="story"></section>
+</div>
+
+<div id="overlay"></div>
+
+<script>
+(function(){
+const I = {
+ ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+ play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg>',
+ prof:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h7"/><circle cx="18" cy="16" r="3"/></svg>',
+ skill:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.6 6.5 19.5l1-6.3L3 8.9 9 8z"/></svg>',
+ hist:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>',
+ gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+ about:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>',
+ chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>',
+ folder:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+ drive:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="17" cy="12" r="1" fill="currentColor"/></svg>',
+ net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>',
+ pc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>'
+};
+
+const T = {
+ es:{appname:'Lanzador Claude',search:'Buscar carpeta o proyecto…',intro:'<b>Maqueta navegable.</b> Pliega el menú lateral con la flecha de abajo, elige carpetas en el árbol, marca opciones y pasa el ratón por un parámetro para ver su explicación. «Simular reapertura» muestra qué opciones se recuerdan. Los datos son de ejemplo.',
+  nav:['Iniciar','Proyecto nuevo','Perfiles','Skills','Historial','Ajustes','Acerca de'],collapse:'Contraer menú',expand:'Expandir menú',
+  rec:'Recientes y favoritos',fold:'Carpetas',chRoot:'Cambiar raíz',pc:'Este equipo',
+  last:'Última sesión: hace 2 h · 14 sesiones',none:'Sin sesiones previas',cont:'Continuar última',resume:'Reanudar…',claudemd:'CLAUDE.md',noclaudemd:'Sin CLAUDE.md',skills:'skills',
+  tabP:'Parámetros',tabE:'Variables de entorno',target:'Abrir en',profile:'Perfil',saveProf:'Guardar como perfil…',
+  copy:'Copiar',vscode:'VS Code',start:'Iniciar',reopen:'Simular reapertura',copied:'Comando copiado',launched:'Se abriría Windows Terminal en ',reopened:'Reabierto: solo siguen marcadas las opciones fijadas',
+  pinT:'Fijar: se recuerda al volver a abrir',chkT:'Activar en esta sesión',
+  legend:['Casilla morada: fijar (se recuerda al reabrir)','Casilla azul: activa ahora','Solo esta vez','Fijada'],
+  phTitle:'Esta sección aún no está maquetada',phBody:'La maqueta se centra en la pantalla Iniciar. Las demás secciones las dibujamos en el siguiente paso.',
+  about:{sub:'Lanzador de proyectos para Claude Code',web:'Web',tel:'Teléfono',wa:'WhatsApp Business',soon:'Próximamente',lic:'Licencia GPLv3 · Código abierto',close:'Cerrar',copyBtn:'Copiar'},
+  g:{model:'Modelo y sesión',perm:'Permisos',ctx:'Contexto y herramientas',dbg:'Depuración'}},
+ en:{appname:'Claude Launcher',search:'Search folder or project…',intro:'<b>Clickable mockup.</b> Collapse the side menu with the arrow at the bottom, pick folders in the tree, tick options and hover a flag to see what it does. "Simulate reopen" shows which options are remembered. Sample data.',
+  nav:['Launch','New project','Profiles','Skills','History','Settings','About'],collapse:'Collapse menu',expand:'Expand menu',
+  rec:'Recent and favourites',fold:'Folders',chRoot:'Change root',pc:'This PC',
+  last:'Last session: 2 h ago · 14 sessions',none:'No previous sessions',cont:'Continue last',resume:'Resume…',claudemd:'CLAUDE.md',noclaudemd:'No CLAUDE.md',skills:'skills',
+  tabP:'Flags',tabE:'Environment variables',target:'Open in',profile:'Profile',saveProf:'Save as profile…',
+  copy:'Copy',vscode:'VS Code',start:'Launch',reopen:'Simulate reopen',copied:'Command copied',launched:'Would open Windows Terminal in ',reopened:'Reopened: only pinned options stay ticked',
+  pinT:'Pin: remembered next time',chkT:'Enable for this session',
+  legend:['Purple box: pin (remembered on reopen)','Blue box: active now','This time only','Pinned'],
+  phTitle:'This section is not mocked up yet',phBody:'The mockup focuses on the Launch screen. The other sections come in the next step.',
+  about:{sub:'Project launcher for Claude Code',web:'Website',tel:'Phone',wa:'WhatsApp Business',soon:'Coming soon',lic:'GPLv3 licence · Open source',close:'Close',copyBtn:'Copy'},
+  g:{model:'Model and session',perm:'Permissions',ctx:'Context and tools',dbg:'Debugging'}},
+ zh:{appname:'Claude 启动器',search:'搜索文件夹或项目…',intro:'<b>可交互原型。</b>点击底部箭头折叠侧边菜单，在目录树中选择文件夹，勾选选项，鼠标悬停在参数上查看说明。“模拟重新打开”显示哪些选项会被记住。示例数据。',
+  nav:['启动','新建项目','配置方案','技能','历史','设置','关于'],collapse:'折叠菜单',expand:'展开菜单',
+  rec:'最近与收藏',fold:'文件夹',chRoot:'更改根目录',pc:'此电脑',
+  last:'上次会话：2 小时前 · 共 14 次',none:'暂无会话',cont:'继续上次',resume:'恢复…',claudemd:'CLAUDE.md',noclaudemd:'无 CLAUDE.md',skills:'个技能',
+  tabP:'参数',tabE:'环境变量',target:'打开方式',profile:'配置方案',saveProf:'另存为方案…',
+  copy:'复制',vscode:'VS Code',start:'启动',reopen:'模拟重新打开',copied:'命令已复制',launched:'将在以下位置打开 Windows Terminal：',reopened:'已重新打开：仅保留固定的选项',
+  pinT:'固定：下次打开时保留',chkT:'本次会话启用',
+  legend:['紫色框：固定（重新打开后保留）','蓝色框：当前启用','仅本次','已固定'],
+  phTitle:'此页面尚未制作原型',phBody:'原型目前聚焦于“启动”页面，其余页面将在下一步绘制。',
+  about:{sub:'Claude Code 项目启动器',web:'网站',tel:'电话',wa:'WhatsApp Business',soon:'即将上线',lic:'GPLv3 许可 · 开源',close:'关闭',copyBtn:'复制'},
+  g:{model:'模型与会话',perm:'权限',ctx:'上下文与工具',dbg:'调试'}}
+};
+
+const HOME='https://ideonetworks.com';
+const MAPS='https://www.google.com/maps/search/?api=1&query=Avenida%20Madrid%2C%203%2C%20Madrid%2C%20Espa%C3%B1a';
+const IDEO=`<a href="${HOME}" target="_blank" rel="noopener">iDeo</a>`;
+const X = {
+ es:{connecting:'Conectando con el motor…',connected:'Conectado al motor',
+  made:`Desarrollado con amor desde <a href="${MAPS}" target="_blank" rel="noopener">Madrid</a> por ${IDEO}`,
+  story:`<div class="lead"><h2>Claude Code, a un clic</h2>
+   <p>El Lanzador Claude es la puerta de entrada a Claude Code en Windows. Eliges la carpeta del proyecto, marcas cómo quieres que arranque Claude y pulsas Iniciar. El lanzador abre el terminal en esa carpeta con las variables de entorno y los parámetros ya puestos, sin recordar opciones ni teclear rutas.</p></div>
+   <div><h3>Qué hace</h3><ul>
+    <li>Recorre todo el disco desde la carpeta que elijas como raíz (<code>C:\\Desarrollo</code> por defecto), con recientes y favoritos.</li>
+    <li>Muestra cada parámetro y variable de entorno de Claude Code con una explicación en tu idioma.</li>
+    <li>Recuerda las opciones que fijas y las agrupa en perfiles reutilizables.</li>
+    <li>Crea proyectos nuevos con su carpeta, su <code>CLAUDE.md</code> y las skills que elijas.</li>
+    <li>Vive en la bandeja del sistema, puede arrancar con Windows y se abre con Ctrl+Alt+I.</li></ul></div>
+   <div><h3>Cómo funciona</h3>
+    <p>Son dos piezas dentro del mismo programa. El motor, escrito en Rust, lee las carpetas, guarda la configuración, instala las skills y lanza Claude en Windows Terminal, PowerShell o WSL. La interfaz, hecha con tecnología web, es lo que ves en pantalla.</p>
+    <p>Las dos se comunican a través de Tauri. El indicador de abajo a la izquierda confirma que la interfaz está conectada al motor.</p></div>
+   <div><h3>Por qué estas tecnologías</h3>
+    <p><b>Rust</b> para el motor: es rápido, seguro con la memoria y genera un ejecutable pequeño que no necesita nada instalado aparte.</p>
+    <p><b>Interfaz web</b> para lo visual: permite una experiencia cuidada al estilo de Docker Desktop, con tooltips, tema claro y oscuro y tres idiomas.</p>
+    <p><b>Tauri</b> para unirlos: usa el WebView2 que ya trae Windows 11, así que el instalador ocupa unos pocos megas y no los 150 de una aplicación Electron. Incluye instaladores MSI y EXE y actualizaciones firmadas.</p></div>
+   <div><h3>De dónde nace</h3>
+    <p>El proyecto nace en el departamento de Mantenimiento Informático de ${IDEO} y lo desarrolla el departamento de Desarrollo de Software de ${IDEO}.</p>
+    <p>Su voluntad es sencilla: hacer la vida más agradable a todas las personas que usan Claude Code.</p>
+    <p>Se ha desarrollado con <i>vibe coding</i> por el personal de ${IDEO} usando Claude Code, y su código fuente ha sido revisado y retocado por personas con Microsoft Visual Studio.</p></div>
+   <p class="sig">Software libre bajo licencia GPLv3 · <a href="https://ideonetworks.com/software/lanzador-claude" target="_blank" rel="noopener">ideonetworks.com/software/lanzador-claude</a></p>`},
+ en:{connecting:'Connecting to the engine…',connected:'Connected to the engine',
+  made:`Made with love in <a href="${MAPS}" target="_blank" rel="noopener">Madrid</a> by ${IDEO}`,
+  story:`<div class="lead"><h2>Claude Code, one click away</h2>
+   <p>Claude Launcher is the front door to Claude Code on Windows. Pick the project folder, tick how you want Claude to start and press Launch. The launcher opens the terminal in that folder with environment variables and flags already set, so there are no options to remember and no paths to type.</p></div>
+   <div><h3>What it does</h3><ul>
+    <li>Browses the whole disk from the root folder you choose (<code>C:\\Desarrollo</code> by default), with recents and favourites.</li>
+    <li>Shows every Claude Code flag and environment variable with an explanation in your language.</li>
+    <li>Remembers the options you pin and groups them into reusable profiles.</li>
+    <li>Creates new projects with their folder, their <code>CLAUDE.md</code> and the skills you choose.</li>
+    <li>Lives in the system tray, can start with Windows and opens with Ctrl+Alt+I.</li></ul></div>
+   <div><h3>How it works</h3>
+    <p>There are two parts inside one program. The engine, written in Rust, reads folders, stores settings, installs skills and launches Claude in Windows Terminal, PowerShell or WSL. The interface, built with web technology, is what you see on screen.</p>
+    <p>They talk to each other through Tauri. The indicator at the bottom left confirms the interface is connected to the engine.</p></div>
+   <div><h3>Why these technologies</h3>
+    <p><b>Rust</b> for the engine: fast, memory-safe, and it produces a small executable that needs nothing else installed.</p>
+    <p><b>Web interface</b> for the visuals: it allows a polished Docker Desktop-style experience with tooltips, light and dark themes and three languages.</p>
+    <p><b>Tauri</b> to join them: it uses the WebView2 that Windows 11 already ships, so the installer is a few megabytes instead of the 150 of an Electron app. It includes MSI and EXE installers and signed updates.</p></div>
+   <div><h3>Where it comes from</h3>
+    <p>The project was born in the IT Maintenance department of ${IDEO} and is developed by the Software Development department of ${IDEO}.</p>
+    <p>Its purpose is simple: to make life more pleasant for everyone who uses Claude Code.</p>
+    <p>It was built with <i>vibe coding</i> by the ${IDEO} team using Claude Code, and its source code has been reviewed and refined by people using Microsoft Visual Studio.</p></div>
+   <p class="sig">Free software under the GPLv3 licence · <a href="https://ideonetworks.com/software/lanzador-claude" target="_blank" rel="noopener">ideonetworks.com/software/lanzador-claude</a></p>`},
+ zh:{connecting:'正在连接引擎…',connected:'已连接到引擎',
+  made:`由 ${IDEO} 在<a href="${MAPS}" target="_blank" rel="noopener">马德里</a>用爱开发`,
+  story:`<div class="lead"><h2>一键启动 Claude Code</h2>
+   <p>Claude 启动器是 Windows 上进入 Claude Code 的入口。选择项目文件夹，勾选 Claude 的启动方式，然后点击“启动”。启动器会在该文件夹中打开终端，并预先设置好环境变量和参数，无需记住选项，也无需输入路径。</p></div>
+   <div><h3>功能</h3><ul>
+    <li>从你选择的根目录（默认 <code>C:\\Desarrollo</code>）浏览整个磁盘，并提供最近与收藏。</li>
+    <li>以你的语言说明 Claude Code 的每个参数和环境变量。</li>
+    <li>记住你固定的选项，并将其归入可复用的配置方案。</li>
+    <li>创建新项目，自动生成文件夹、<code>CLAUDE.md</code> 和所选技能。</li>
+    <li>驻留在系统托盘，可随 Windows 启动，按 Ctrl+Alt+I 打开。</li></ul></div>
+   <div><h3>工作原理</h3>
+    <p>程序由两部分组成。引擎使用 Rust 编写，负责读取文件夹、保存设置、安装技能，并在 Windows Terminal、PowerShell 或 WSL 中启动 Claude。界面使用 Web 技术构建，也就是你在屏幕上看到的部分。</p>
+    <p>两者通过 Tauri 通信。左下角的指示器表示界面已连接到引擎。</p></div>
+   <div><h3>技术选择</h3>
+    <p><b>Rust</b> 用于引擎：速度快、内存安全，生成的可执行文件体积小，无需额外安装任何组件。</p>
+    <p><b>Web 界面</b> 用于视觉部分：可实现类似 Docker Desktop 的精致体验，支持提示、浅色与深色主题以及三种语言。</p>
+    <p><b>Tauri</b> 将两者结合：它使用 Windows 11 自带的 WebView2，因此安装包只有几兆，而不是 Electron 应用的 150 兆。并提供 MSI 和 EXE 安装程序及签名更新。</p></div>
+   <div><h3>项目由来</h3>
+    <p>本项目诞生于 ${IDEO} 的 IT 运维部门，由 ${IDEO} 的软件开发部门开发。</p>
+    <p>它的初衷很简单：让每一位使用 Claude Code 的人工作得更愉快。</p>
+    <p>本软件由 ${IDEO} 团队使用 Claude Code 以 <i>vibe coding</i> 方式开发，源代码经过人工使用 Microsoft Visual Studio 审查和润色。</p></div>
+   <p class="sig">GPLv3 许可的自由软件 · <a href="https://ideonetworks.com/software/lanzador-claude" target="_blank" rel="noopener">ideonetworks.com/software/lanzador-claude</a></p>`}
+};
+
+// Flag catalogue (sample) — real app reads `claude --help` too
+const FLAGS = [
+ {id:'model',g:'model',flag:'--model',val:{type:'select',opts:['opus','sonnet','haiku']},
+  d:{es:'Modelo de la sesión',en:'Session model',zh:'会话模型'},
+  t:{es:'Elige el modelo con el que arranca Claude. Acepta alias (opus, sonnet, haiku) o el nombre completo del modelo.',en:'Choose the model Claude starts with. Accepts aliases (opus, sonnet, haiku) or a full model name.',zh:'选择 Claude 启动时使用的模型。可使用别名（opus、sonnet、haiku）或完整模型名称。'}},
+ {id:'continue',g:'model',flag:'--continue',
+  d:{es:'Retoma la última conversación de esta carpeta',en:'Resume the latest conversation in this folder',zh:'继续此文件夹中最近的对话'},
+  t:{es:'Abre Claude continuando la conversación más reciente del directorio de trabajo, con todo su contexto.',en:'Opens Claude continuing the most recent conversation in the working directory, with its full context.',zh:'打开 Claude 并继续工作目录中最近的一次对话，保留全部上下文。'}},
+ {id:'resume',g:'model',flag:'--resume',
+  d:{es:'Elegir una conversación anterior',en:'Pick a previous conversation',zh:'选择以前的对话'},
+  t:{es:'Muestra la lista de conversaciones anteriores para elegir cuál reanudar.',en:'Shows the list of previous conversations so you can pick one to resume.',zh:'显示以前的对话列表，供选择要恢复的对话。'}},
+ {id:'perm',g:'perm',flag:'--permission-mode',val:{type:'select',opts:['default','acceptEdits','plan','auto']},
+  d:{es:'Modo de permisos inicial',en:'Initial permission mode',zh:'初始权限模式'},
+  t:{es:'Con qué modo empieza la sesión: preguntar siempre, aceptar ediciones, modo plan (solo planifica) o automático.',en:'Which mode the session starts in: always ask, accept edits, plan mode (plans only) or auto.',zh:'会话启动时的模式：始终询问、接受编辑、计划模式（仅规划）或自动。'}},
+ {id:'skip',g:'perm',flag:'--dangerously-skip-permissions',warn:true,
+  d:{es:'Omite todas las confirmaciones',en:'Skips every confirmation',zh:'跳过所有确认'},
+  t:{es:'Claude ejecuta comandos y edita archivos sin pedir permiso. Úsalo solo en entornos aislados o contenedores.',en:'Claude runs commands and edits files without asking. Use only in isolated environments or containers.',zh:'Claude 将不经询问直接执行命令和编辑文件。仅在隔离环境或容器中使用。'}},
+ {id:'adddir',g:'ctx',flag:'--add-dir',val:{type:'text',ph:'C:\\Compartido'},
+  d:{es:'Carpetas extra a las que puede acceder',en:'Extra folders it can access',zh:'可访问的额外文件夹'},
+  t:{es:'Permite a Claude leer y editar otras carpetas además de la de trabajo. Útil para librerías compartidas.',en:'Lets Claude read and edit other folders besides the working one. Handy for shared libraries.',zh:'允许 Claude 读写工作目录以外的其他文件夹，适用于共享库。'}},
+ {id:'append',g:'ctx',flag:'--append-system-prompt',val:{type:'text',ph:'Responde en español'},
+  d:{es:'Añade instrucciones al inicio',en:'Append startup instructions',zh:'追加启动指令'},
+  t:{es:'Añade texto propio a las instrucciones de sistema de Claude para toda la sesión.',en:'Adds your own text to Claude\'s system instructions for the whole session.',zh:'在整个会话中向 Claude 的系统指令追加自定义文本。'}},
+ {id:'mcp',g:'ctx',flag:'--mcp-config',val:{type:'text',ph:'.mcp.json'},
+  d:{es:'Carga servidores MCP desde un archivo',en:'Load MCP servers from a file',zh:'从文件加载 MCP 服务器'},
+  t:{es:'Indica un archivo JSON con servidores MCP (herramientas externas) que Claude podrá usar.',en:'Points to a JSON file with MCP servers (external tools) Claude can use.',zh:'指定包含 MCP 服务器（外部工具）的 JSON 文件，供 Claude 使用。'}},
+ {id:'ide',g:'ctx',flag:'--ide',
+  d:{es:'Conecta con el IDE abierto',en:'Connect to the open IDE',zh:'连接已打开的 IDE'},
+  t:{es:'Se conecta automáticamente al IDE (por ejemplo VS Code) si hay exactamente uno disponible.',en:'Automatically connects to the IDE (for example VS Code) if exactly one is available.',zh:'如果恰好有一个可用的 IDE（如 VS Code），则自动连接。'}},
+ {id:'verbose',g:'dbg',flag:'--verbose',
+  d:{es:'Salida detallada',en:'Detailed output',zh:'详细输出'},
+  t:{es:'Muestra información detallada de cada paso que da Claude.',en:'Shows detailed information about each step Claude takes.',zh:'显示 Claude 每一步的详细信息。'}},
+ {id:'debug',g:'dbg',flag:'--debug',
+  d:{es:'Modo depuración',en:'Debug mode',zh:'调试模式'},
+  t:{es:'Activa los registros de depuración. Útil para diagnosticar problemas con MCP o hooks.',en:'Turns on debug logging. Useful to diagnose MCP or hook problems.',zh:'开启调试日志，便于诊断 MCP 或钩子问题。'}}
+];
+const ENVS = [
+ {id:'pstool',g:'ctx',flag:'CLAUDE_CODE_USE_POWERSHELL_TOOL',fixed:'1',
+  d:{es:'Usa PowerShell como herramienta de terminal',en:'Use PowerShell as the shell tool',zh:'使用 PowerShell 作为终端工具'},
+  t:{es:'Hace que Claude ejecute los comandos con PowerShell en lugar de Bash en Windows.',en:'Makes Claude run commands with PowerShell instead of Bash on Windows.',zh:'让 Claude 在 Windows 上使用 PowerShell 而非 Bash 执行命令。'}},
+ {id:'thinking',g:'model',flag:'MAX_THINKING_TOKENS',val:{type:'text',ph:'31999'},
+  d:{es:'Presupuesto de razonamiento',en:'Thinking budget',zh:'思考预算'},
+  t:{es:'Máximo de tokens que Claude puede dedicar a pensar antes de responder.',en:'Maximum tokens Claude may spend thinking before answering.',zh:'Claude 回答前可用于思考的最大 token 数。'}},
+ {id:'maxout',g:'model',flag:'CLAUDE_CODE_MAX_OUTPUT_TOKENS',val:{type:'text',ph:'32000'},
+  d:{es:'Límite de tokens por respuesta',en:'Output token limit per reply',zh:'每次回复的输出 token 上限'},
+  t:{es:'Limita la longitud máxima de cada respuesta de Claude.',en:'Caps the maximum length of each Claude reply.',zh:'限制 Claude 每次回复的最大长度。'}},
+ {id:'bashto',g:'ctx',flag:'BASH_DEFAULT_TIMEOUT_MS',val:{type:'text',ph:'120000'},
+  d:{es:'Tiempo máximo por comando',en:'Default command timeout',zh:'命令默认超时'},
+  t:{es:'Milisegundos que espera Claude a que termine un comando antes de cortarlo.',en:'Milliseconds Claude waits for a command before stopping it.',zh:'Claude 在终止命令前等待的毫秒数。'}},
+ {id:'telemetry',g:'dbg',flag:'DISABLE_TELEMETRY',fixed:'1',
+  d:{es:'Desactiva la telemetría',en:'Turn off telemetry',zh:'关闭遥测'},
+  t:{es:'Evita que Claude Code envíe datos de uso.',en:'Stops Claude Code from sending usage data.',zh:'阻止 Claude Code 发送使用数据。'}},
+ {id:'nonessential',g:'dbg',flag:'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',fixed:'1',
+  d:{es:'Sin tráfico no esencial',en:'No non-essential traffic',zh:'禁用非必要流量'},
+  t:{es:'Desactiva actualizaciones automáticas, telemetría e informes de errores de una vez.',en:'Turns off auto-updates, telemetry and error reporting in one go.',zh:'一次性关闭自动更新、遥测和错误报告。'}}
+];
+
+const TREE = [
+ {id:'dev',name:'Desarrollo',path:'C:\\Desarrollo',open:true,kind:'folder',kids:[
+   {id:'crm',name:'api-crm',path:'C:\\Desarrollo\\api-crm',info:{branch:'develop',md:true,skills:2,s:true},kids:[]},
+   {id:'idn',name:'IDNLanzador',path:'C:\\Desarrollo\\IDNLanzador',open:true,info:{branch:'main',md:true,skills:3,s:true},kids:[
+     {id:'docs',name:'docs',path:'C:\\Desarrollo\\IDNLanzador\\docs',info:{branch:'main',md:false,skills:0,s:false}},
+     {id:'src',name:'src',path:'C:\\Desarrollo\\IDNLanzador\\src',info:{branch:'main',md:false,skills:0,s:false}}]},
+   {id:'pru',name:'pruebas',path:'C:\\Desarrollo\\pruebas',info:{branch:null,md:false,skills:0,s:false},kids:[]},
+   {id:'web',name:'web-ideo',path:'C:\\Desarrollo\\web-ideo',info:{branch:'main',md:true,skills:5,s:true},kids:[]}]},
+ {id:'pc',name:'@pc',kind:'pc',open:false,kids:[
+   {id:'c',name:'C:\\',path:'C:\\',kind:'drive',kids:[]},
+   {id:'d',name:'D:\\  Datos',path:'D:\\',kind:'drive',kids:[]},
+   {id:'n',name:'\\\\servidor\\proyectos',path:'\\\\servidor\\proyectos',kind:'net',kids:[]}]}
+];
+
+let S = {lang:'es',navMin:false,view:0,tab:'p',target:'wt',sel:'idn',hover:null,
+  on:{model:true,perm:true,continue:true,pstool:true},pin:{model:true,perm:true,pstool:true},
+  vals:{model:'opus',perm:'auto'}};
+try{const sv=JSON.parse(localStorage.getItem('lanzador-demo')||'null'); if(sv){S.pin=sv.pin||S.pin;S.vals=sv.vals||S.vals;S.navMin=!!sv.navMin;S.lang=sv.lang||S.lang;}}catch(e){}
+function save(){try{localStorage.setItem('lanzador-demo',JSON.stringify({pin:S.pin,vals:S.vals,navMin:S.navMin,lang:S.lang}))}catch(e){}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const t=()=>T[S.lang];
+
+function find(id,list=TREE){for(const n of list){if(n.id===id)return n;if(n.kids){const r=find(id,n.kids);if(r)return r}}return null}
+
+function renderNav(){
+  const icons=['play','plus','prof','skill','hist','gear','about'];
+  const tt=t();
+  let h='';
+  icons.forEach((ic,i)=>{ if(i===5) h+='<div class="spacer"></div>';
+    h+=`<button class="${S.view===i?'on':''}" data-v="${i}" title="${S.navMin?esc(tt.nav[i]):''}">${I[ic]}<span class="lbl">${esc(tt.nav[i])}</span></button>`;});
+  h+=`<button class="collapse" id="collapse" title="${esc(S.navMin?tt.expand:tt.collapse)}">${I.chev}<span class="lbl">${esc(tt.collapse)}</span></button>`;
+  const nav=$('nav'); nav.innerHTML=h; nav.classList.toggle('min',S.navMin);
+  nav.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{const v=+b.dataset.v; if(v===6){openAbout();return} S.view=v;renderAll()});
+  $('collapse').onclick=()=>{S.navMin=!S.navMin;save();renderNav()};
+}
+
+function treeHTML(list,depth){
+  let h='';
+  for(const n of list){
+    const hasKids=n.kids&&n.kids.length; const car=hasKids?(n.open?'▾':'▸'):'';
+    const ic=n.kind==='pc'?I.pc:n.kind==='drive'?I.drive:n.kind==='net'?I.net:I.folder;
+    const name=n.name==='@pc'?t().pc:n.name;
+    h+=`<div class="tn ${S.sel===n.id?'sel':''}" data-id="${n.id}" tabindex="0" style="padding-left:${8+depth*16}px"><span class="car">${car}</span>${ic}<span>${esc(name)}</span></div>`;
+    if(hasKids&&n.open)h+=treeHTML(n.kids,depth+1);
+  }
+  return h;
+}
+function renderTree(){
+  const tt=t();
+  $('recTitle').textContent=tt.rec; $('foldTitle').textContent=tt.fold; $('chRoot').textContent=tt.chRoot;
+  $('chips').innerHTML=[['idn',true],['web',true],['crm',false],['pru',false]].map(([id,f])=>`<button class="chip" data-id="${id}">${f?'<span class="star">★</span> ':''}${esc(find(id).name)}</button>`).join('');
+  $('chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{S.sel=c.dataset.id;S.view=0;renderAll()});
+  $('tree').innerHTML=treeHTML(TREE,0);
+  $('tree').querySelectorAll('.tn').forEach(el=>{
+    const act=()=>{const n=find(el.dataset.id); if(n.kids&&n.kids.length)n.open=!n.open; if(n.path){S.sel=n.id;} S.view=0; renderAll();};
+    el.onclick=act; el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act()}};
+  });
+}
+
+function rowHTML(o){
+  const on=!!S.on[o.id], pin=!!S.pin[o.id], tt=t();
+  let val='';
+  if(o.val){ const v=S.vals[o.id]??'';
+    if(o.val.type==='select') val=`<span class="val"><select id="v-${o.id}" data-val="${o.id}">${o.val.opts.map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select></span>`;
+    else val=`<span class="val"><input id="v-${o.id}" data-val="${o.id}" value="${esc(v)}" placeholder="${esc(o.val.ph)}"></span>`;
+  } else if(o.fixed) val=`<span class="val mono" style="color:var(--muted);font-size:12px">= ${o.fixed}</span>`;
+  const tip='';
+  return `<div class="row" data-row="${o.id}">
+    <button class="cb pin ${pin?'on':''}" data-pin="${o.id}" title="${esc(tt.pinT)}" aria-pressed="${pin}">${I.ok}</button>
+    <button class="cb chk ${on?'on':''}" data-chk="${o.id}" title="${esc(tt.chkT)}" aria-pressed="${on}">${I.ok}</button>
+    <span class="flag ${o.warn?'warn':''}" data-tip="${o.id}" tabindex="0">${esc(o.flag)}</span>
+    <span class="desc">${esc(o.d[S.lang])}</span>${val}${tip}</div>`;
+}
+
+function buildCmd(){
+  const n=find(S.sel); const path=n.path||'C:\\';
+  const envs=ENVS.filter(e=>S.on[e.id]).map(e=>[e.flag,e.fixed||S.vals[e.id]||e.val.ph]);
+  const flags=FLAGS.filter(f=>S.on[f.id]).map(f=>{ if(!f.val) return f.flag; const v=S.vals[f.id]||f.val.ph; return f.flag+' '+(/\s/.test(v)?`'${v}'`:v)});
+  const claude=['claude',...flags].join(' ');
+  if(S.target==='wsl'){
+    const wp='/mnt/'+path[0].toLowerCase()+path.slice(2).replace(/\\/g,'/');
+    return `wt -d "${path}" wsl --cd "${wp}" -- ${envs.length?'env '+envs.map(([k,v])=>`${k}=${v}`).join(' ')+' ':''}${claude}`;
+  }
+  const ps=envs.map(([k,v])=>`$env:${k}='${v}'; `).join('')+claude;
+  if(S.target==='ps') return `PS ${path}> ${ps}`;
+  return `wt -d "${path}" pwsh -NoExit -Command "${ps}"`;
+}
+
+function renderMain(){
+  const tt=t(), m=$('main');
+  if(S.view!==0){
+    m.innerHTML=`<div class="placeholder"><h3>${esc(tt.nav[S.view])}</h3><p><b>${esc(tt.phTitle)}.</b> ${esc(tt.phBody)}</p></div>`; return;
+  }
+  const n=find(S.sel), inf=n.info||{branch:null,md:false,skills:0,s:false};
+  const list=S.tab==='p'?FLAGS:ENVS;
+  const cntP=FLAGS.filter(f=>S.on[f.id]).length, cntE=ENVS.filter(f=>S.on[f.id]).length;
+  let rows='';
+  for(const g of ['model','perm','ctx','dbg']){ const items=list.filter(o=>o.g===g); if(!items.length)continue;
+    rows+=`<div class="grp">${esc(tt.g[g])}</div>`+items.map(rowHTML).join(''); }
+  m.innerHTML=`
+   <div class="info">
+     <div style="min-width:0"><div class="p">${esc(n.path||'')}</div><div class="sub">${esc(inf.s?tt.last:tt.none)}</div></div>
+     ${inf.branch?`<span class="badge ok">⎇ ${esc(inf.branch)}</span>`:''}
+     <span class="badge ${inf.md?'ok':''}">${esc(inf.md?tt.claudemd+' ✓':tt.noclaudemd)}</span>
+     <span class="badge">${inf.skills} ${esc(tt.skills)}</span>
+     <span class="ml"></span>
+     ${inf.s?`<button class="btn" id="bCont">↺ ${esc(tt.cont)}</button><button class="btn">${esc(tt.resume)} ▾</button>`:''}
+   </div>
+   <div class="tabs">
+     <button class="tab ${S.tab==='p'?'on':''}" data-tab="p">${esc(tt.tabP)}<span class="n">${cntP}</span></button>
+     <button class="tab ${S.tab==='e'?'on':''}" data-tab="e">${esc(tt.tabE)}<span class="n">${cntE}</span></button>
+     <span class="target">${esc(tt.target)} <select class="sel2" id="target">
+       <option value="wt" ${S.target==='wt'?'selected':''}>Windows Terminal · PowerShell</option>
+       <option value="ps" ${S.target==='ps'?'selected':''}>PowerShell</option>
+       <option value="wsl" ${S.target==='wsl'?'selected':''}>Windows Terminal · WSL</option></select></span>
+   </div>
+   <div class="prof">${esc(tt.profile)}: <select class="sel2" id="prof"><option>PowerShell + Opus</option><option>Seguro</option><option>Autónomo</option></select><button class="lnk">${esc(tt.saveProf)}</button></div>
+   <div class="opts" id="opts">${rows}</div>
+   <div class="foot">
+     <div class="cmd" id="cmd">${esc(buildCmd())}</div>
+     <button class="btn" id="bCopy">${esc(tt.copy)}</button>
+     <button class="btn" id="bReopen">${esc(tt.reopen)}</button>
+     <button class="btn">${esc(tt.vscode)}</button>
+     <button class="btn pri" id="bStart"><span style="display:inline-flex;width:12px;height:12px;vertical-align:-1px;margin-right:6px">${I.play}</span>${esc(tt.start)}</button>
+   </div>`;
+  m.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{S.tab=b.dataset.tab;S.hover=null;renderMain()});
+  $('target').onchange=e=>{S.target=e.target.value;$('cmd').textContent=buildCmd()};
+  m.querySelectorAll('[data-pin]').forEach(b=>b.onclick=()=>{const id=b.dataset.pin;
+    if(S.pin[id]){delete S.pin[id];delete S.on[id]} else {S.pin[id]=true;S.on[id]=true}
+    save();renderMain()});
+  m.querySelectorAll('[data-chk]').forEach(b=>b.onclick=()=>{const id=b.dataset.chk;
+    if(S.on[id]){delete S.on[id];delete S.pin[id]} else {S.on[id]=true}
+    save();renderMain()});
+  m.querySelectorAll('[data-val]').forEach(el=>{
+    const upd=()=>{S.vals[el.dataset.val]=el.value; S.on[el.dataset.val]=true; save(); $('cmd').textContent=buildCmd();
+      const c=m.querySelector(`[data-chk="${el.dataset.val}"]`); c.classList.add('on');};
+    el.oninput=upd; el.onchange=upd;});
+  m.querySelectorAll('[data-tip]').forEach(el=>{
+    el.onmouseenter=el.onfocus=()=>{S.hover=el.dataset.tip;showTip(el)};
+    el.onmouseleave=el.onblur=()=>{S.hover=null;hideTip()};});
+  $('bCopy').onclick=()=>{const txt=buildCmd(); try{navigator.clipboard.writeText(txt).then(()=>toast(t().copied),()=>selectCmd())}catch(e){selectCmd()}};
+  $('bStart').onclick=()=>toast(t().launched+(find(S.sel).path||''));
+  $('bReopen').onclick=()=>{S.on={};for(const k in S.pin)S.on[k]=true;renderMain();toast(t().reopened)};
+}
+function showTip(el){hideTip();const o=[...FLAGS,...ENVS].find(x=>x.id===el.dataset.tip);const row=el.closest('.row');
+  const d=document.createElement('div');d.className='tip';d.id='tipEl';d.innerHTML=`<b>${esc(o.flag)}</b><br>${esc(o.t[S.lang])}`;row.appendChild(d);}
+function hideTip(){const x=$('tipEl');if(x)x.remove()}
+function selectCmd(){const r=document.createRange();r.selectNodeContents($('cmd'));const s=getSelection();s.removeAllRanges();s.addRange(r)}
+let tTimer;function toast(msg){let el=$('toast');if(!el){el=document.createElement('div');el.className='toast';el.id='toast';el.setAttribute('role','status');document.body.appendChild(el)}
+  el.textContent=msg;el.hidden=false;clearTimeout(tTimer);tTimer=setTimeout(()=>el.hidden=true,2600)}
+
+function openAbout(){
+  const a=t().about;
+  $('overlay').innerHTML=`<div class="modal-bg" id="mbg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="abT">
+    <div class="mh"><span class="logo">iDeo</span><div><h3 id="abT">${esc(t().appname)}</h3><small>${esc(a.sub)} · v0.1.0</small></div></div>
+    <dl class="mb">
+      <dt>${esc(a.web)}</dt><dd><a href="https://ideonetworks.com/software/lanzador-claude" target="_blank" rel="noopener">ideonetworks.com/software/lanzador-claude</a></dd>
+      <dt>${esc(a.tel)}</dt><dd><span class="mono" id="tel">+34 911 29 29 39</span><button class="mini" id="cpTel">${esc(a.copyBtn)}</button></dd>
+      <dt>${esc(a.wa)}</dt><dd style="color:var(--muted)">${esc(a.soon)}</dd>
+    </dl>
+    <p class="madewith">${X[S.lang].made}</p>
+    <div class="mf"><span>© iDeo Networks · ${esc(a.lic)}</span><button class="btn" id="cls">${esc(a.close)}</button></div>
+  </div></div>`;
+  const close=()=>{$('overlay').innerHTML=''};
+  $('cls').onclick=close; $('mbg').onclick=e=>{if(e.target.id==='mbg')close()};
+  $('cpTel').onclick=()=>{try{navigator.clipboard.writeText('+34911292939').then(()=>toast('+34 911 29 29 39'),()=>{})}catch(e){}};
+  $('cls').focus();
+  document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
+}
+
+function renderLegend(){const L=t().legend;
+  $('legend').innerHTML=`<span><span class="cb pin on">${I.ok}</span>${esc(L[0])}</span><span><span class="cb chk on">${I.ok}</span>${esc(L[1])}</span>
+   <span><span class="cb pin"></span><span class="cb chk on">${I.ok}</span>${esc(L[2])}</span><span><span class="cb pin on">${I.ok}</span><span class="cb chk on">${I.ok}</span>${esc(L[3])}</span>`;}
+
+function renderAll(){
+  const tt=t(); document.documentElement.lang=S.lang==='zh'?'zh-CN':S.lang;
+  $('appname').textContent=tt.appname; $('searchph').textContent=tt.search; $('intro').innerHTML=tt.intro; $('lang').value=S.lang;
+  renderNav();renderTree();renderMain();renderLegend();
+  $('story').innerHTML=X[S.lang].story; renderStatus();
+}
+let engineUp=false;
+function renderStatus(){$('status').classList.toggle('ok',engineUp);$('engine').textContent=engineUp?X[S.lang].connected:X[S.lang].connecting}
+setTimeout(()=>{engineUp=true;renderStatus()},900);
+$('lang').onchange=e=>{S.lang=e.target.value;save();renderAll()};
+$('theme').onclick=()=>{const r=document.documentElement;const cur=r.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');r.setAttribute('data-theme',cur==='dark'?'light':'dark')};
+// first run: reopen semantics — only pinned are on
+S.on={}; for(const k in S.pin) S.on[k]=true; S.on.continue=true;
+renderAll();
+})();
+</script>
