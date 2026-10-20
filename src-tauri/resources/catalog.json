@@ -123,7 +123,8 @@
   "value": {
    "kind": "text",
    "options": [],
-   "placeholder": "id o nombre"
+   "placeholder": "id o nombre",
+   "optional": true
   },
   "dangerous": false,
   "fromHelp": false,
@@ -636,7 +637,8 @@
   "value": {
    "kind": "text",
    "options": [],
-   "placeholder": "nombre (opcional)"
+   "placeholder": "nombre (opcional)",
+   "optional": true
   },
   "dangerous": false,
   "fromHelp": false,
@@ -742,7 +744,8 @@
   "value": {
    "kind": "text",
    "options": [],
-   "placeholder": "filtro (opcional): hooks,mcp"
+   "placeholder": "filtro (opcional): hooks,mcp",
+   "optional": true
   },
   "dangerous": false,
   "fromHelp": false,
@@ -874,7 +877,8 @@
   "value": {
    "kind": "text",
    "options": [],
-   "placeholder": "nombre (opcional)"
+   "placeholder": "nombre (opcional)",
+   "optional": true
   },
   "dangerous": false,
   "fromHelp": false,

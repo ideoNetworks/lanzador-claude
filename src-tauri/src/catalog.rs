@@ -13,6 +13,9 @@ pub struct ValueSpec {
     pub fixed: Option<String>,
     #[serde(default)]
     pub placeholder: Option<String>,
+    /// Text flag whose value may be left empty (emits the bare flag).
+    #[serde(default)]
+    pub optional: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -84,6 +87,7 @@ pub fn merge_help(mut items: Vec<CatalogItem>, parsed: Vec<(String, bool, String
                 options: Vec::new(),
                 fixed: None,
                 placeholder: None,
+                optional: false,
             },
             dangerous: false,
             from_help: true,

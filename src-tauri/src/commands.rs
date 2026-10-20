@@ -1,10 +1,11 @@
 //! Tauri command wrappers.
 use serde::Serialize;
 
-use crate::config::{self, AppConfig};
+use crate::command::{self, LaunchPlan, LaunchRequest};
+use crate::config::{self, AppConfig, HistoryEntry};
 use crate::error::{AppError, AppResult};
 use crate::catalog::{self, CatalogItem};
-use crate::{help_parser, locale, seed};
+use crate::{help_parser, launch, locale, seed};
 
 #[derive(Serialize)]
 pub struct Pong {
@@ -131,6 +132,36 @@ pub async fn get_catalog(include_help: bool) -> Vec<CatalogItem> {
         Some(help) => catalog::merge_help(items, help_parser::parse(&help)),
         None => items,
     }
+}
+
+/// Resolves the plan for `req` against the embedded catalog.
+fn make_plan(req: &LaunchRequest) -> AppResult<LaunchPlan> {
+    // T6: secrets::get
+    command::plan(req, &catalog::load_embedded(), &|_| None, command::detect_pwsh())
+}
+
+#[tauri::command]
+pub fn build_command(req: LaunchRequest) -> AppResult<String> {
+    Ok(make_plan(&req)?.preview)
+}
+
+#[tauri::command]
+pub fn launch(req: LaunchRequest) -> AppResult<HistoryEntry> {
+    let plan = make_plan(&req)?;
+    launch::run(&plan)?;
+    let mut cfg = config::load();
+    let entry = HistoryEntry {
+        at: chrono::Local::now().to_rfc3339(),
+        path: req.path.clone(),
+        profile: cfg.active_profile.clone(),
+        target: req.target,
+        selection: req.selection.clone(),
+        preview: plan.preview,
+    };
+    config::push_recent(&mut cfg, &req.path);
+    config::push_history(&mut cfg, entry.clone());
+    config::save(&cfg)?;
+    Ok(entry)
 }
 
 #[cfg(all(test, windows))]

@@ -1,8 +1,10 @@
+pub mod command;
 pub mod commands;
 pub mod catalog;
 pub mod config;
 pub mod error;
 pub mod help_parser;
+pub mod launch;
 pub mod locale;
 pub mod paths;
 pub mod seed;
@@ -19,7 +21,9 @@ pub fn run() {
             commands::system_locale,
             commands::export_config,
             commands::import_config,
-            commands::get_catalog
+            commands::get_catalog,
+            commands::build_command,
+            commands::launch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
