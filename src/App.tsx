@@ -10,6 +10,8 @@ import ProfilesView from "./views/ProfilesView";
 import HistoryView from "./views/HistoryView";
 import SettingsView from "./views/SettingsView";
 import AboutDialog from "./components/AboutDialog";
+import NewProjectView from "./views/NewProjectView";
+import SkillsView from "./views/SkillsView";
 import LaunchView from "./views/LaunchView";
 import UpdateBanner from "./components/UpdateBanner";
 import { useAppEvents } from "./integration/useAppEvents";
@@ -57,6 +59,8 @@ export default function App() {
         <NavRail onAbout={() => useStore.getState().setAboutOpen(true)} />
         <main className="main">
           {view === "launch" ? <LaunchView />
+            : view === "new" ? <NewProjectView />
+            : view === "skills" ? <SkillsView />
             : view === "profiles" ? <ProfilesView />
             : view === "history" ? <HistoryView />
             : view === "settings" ? <SettingsView />
