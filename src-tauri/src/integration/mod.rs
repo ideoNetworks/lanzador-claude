@@ -28,7 +28,7 @@ pub fn parse_args(args: &[String]) -> Vec<Arg> {
         match a.as_str() {
             "--open" => {
                 if let Some(p) = it.next() {
-                    out.push(Arg::Open(p.clone()));
+                    out.push(Arg::Open(normalize_open_path(p)));
                 }
             }
             "--notify" => out.push(Arg::Notify(it.next().cloned().unwrap_or_default())),
@@ -37,6 +37,33 @@ pub fn parse_args(args: &[String]) -> Vec<Arg> {
         }
     }
     out
+}
+
+/// Explorer's `--open "C:\"` reaches argv as `C:"`: drop the stray quote and restore a drive root.
+pub fn normalize_open_path(p: &str) -> String {
+    let p = p.trim_end_matches('"');
+    let b = p.as_bytes();
+    if b.len() == 2 && b[0].is_ascii_alphabetic() && b[1] == b':' {
+        format!("{p}\\")
+    } else {
+        p.to_string()
+    }
+}
+
+/// Saves the config from the engine side and tells the UI (`config-changed`) so it does not write back a stale copy.
+pub fn save_and_notify(app: &AppHandle, cfg: &config::AppConfig) -> AppResult<()> {
+    config::save(cfg)?;
+    let _ = app.emit("config-changed", cfg);
+    Ok(())
+}
+
+/// Update announced before the UI was listening (taken once on mount).
+#[derive(Default)]
+pub struct PendingUpdate(pub Mutex<Option<updater::UpdateInfo>>);
+
+#[tauri::command]
+pub fn take_pending_update(app: AppHandle) -> Option<updater::UpdateInfo> {
+    app.state::<PendingUpdate>().0.lock().ok().and_then(|mut g| g.take())
 }
 
 /// Path received through `--open` before the UI was able to listen (taken once by the UI on mount).
@@ -106,7 +133,7 @@ pub fn apply_autostart(app: &AppHandle, enabled: bool) -> AppResult<()> {
     res.map_err(|e| AppError::new("autostart_failed", e.to_string()))?;
     let mut cfg = config::load();
     cfg.autostart = enabled;
-    config::save(&cfg)
+    save_and_notify(app, &cfg)
 }
 
 #[tauri::command]
@@ -130,6 +157,14 @@ mod tests {
 
     fn v(a: &[&str]) -> Vec<String> {
         a.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn drive_root_from_explorer_is_normalised() {
+        assert_eq!(parse_args(&v(&["--open", "C:\""])), vec![Arg::Open("C:\\".into())]);
+        assert_eq!(normalize_open_path("D:"), "D:\\");
+        assert_eq!(normalize_open_path(r"C:\Proyectos"), r"C:\Proyectos");
+        assert_eq!(normalize_open_path("C:\\a b\""), r"C:\a b");
     }
 
     #[test]

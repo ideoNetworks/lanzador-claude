@@ -60,6 +60,11 @@ pub fn tray_labels(lang: &str) -> TrayLabels {
 /// Languages offered in the tray, each labelled in its own language.
 pub const LANGUAGES: [(&str, &str); 3] = [("es", "Español"), ("en", "English"), ("zh", "中文")];
 
+/// Menu text for a path: `&` would otherwise become an accelerator marker.
+pub fn recent_label(path: &str) -> String {
+    path.replace('&', "&&")
+}
+
 fn build_menu(app: &AppHandle, cfg: &AppConfig, lang: &str) -> tauri::Result<Menu<tauri::Wry>> {
     let l = tray_labels(lang);
     let recents = Submenu::with_id(app, "recents", l.recents, true)?;
@@ -67,7 +72,7 @@ fn build_menu(app: &AppHandle, cfg: &AppConfig, lang: &str) -> tauri::Result<Men
         recents.append(&MenuItem::with_id(app, "none", l.no_recents, false, None::<&str>)?)?;
     }
     for path in cfg.recents.iter().take(MAX_RECENTS) {
-        recents.append(&MenuItem::with_id(app, format!("recent:{path}"), path, true, None::<&str>)?)?;
+        recents.append(&MenuItem::with_id(app, format!("recent:{path}"), recent_label(path), true, None::<&str>)?)?;
     }
     let langs = Submenu::with_id(app, "lang", l.language, true)?;
     for (code, name) in LANGUAGES {
@@ -129,7 +134,7 @@ fn on_menu(app: &AppHandle, id: &str) {
 fn set_language(app: &AppHandle, code: &str) {
     let mut cfg = config::load();
     cfg.language = Some(code.to_string());
-    if config::save(&cfg).is_ok() {
+    if super::save_and_notify(app, &cfg).is_ok() {
         let _ = app.emit("language-changed", code);
         super::explorer::refresh_if_enabled();
         rebuild(app);
@@ -192,6 +197,11 @@ mod tests {
         }
         assert_ne!(tray_labels("es").open, tray_labels("en").open);
         assert_ne!(tray_labels("zh").open, tray_labels("en").open);
+    }
+
+    #[test]
+    fn recent_label_escapes_ampersand() {
+        assert_eq!(recent_label(r"C:\R&D\app"), r"C:\R&&D\app");
     }
 
     #[test]

@@ -30,6 +30,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(commands::CatalogCache::default())
         .manage(integration::PendingOpen::default())
+        .manage(integration::PendingUpdate::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event
                 && window.label() == integration::MAIN && config::load().close_to_tray
@@ -86,6 +87,7 @@ pub fn run() {
             commands::open_explorer,
             integration::set_autostart,
             integration::take_pending_open,
+            integration::take_pending_update,
             integration::tray::refresh_tray,
             integration::shortcut::set_shortcut,
             integration::explorer::set_explorer_menu,

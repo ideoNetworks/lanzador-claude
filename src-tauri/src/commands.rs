@@ -164,7 +164,7 @@ pub fn build_command(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> A
 }
 
 #[tauri::command]
-pub fn launch(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<HistoryEntry> {
+pub fn launch(app: tauri::AppHandle, cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<HistoryEntry> {
     let plan = make_plan(&cache, &req, true)?;
     launch::run(&plan)?;
     let mut cfg = config::load();
@@ -178,7 +178,8 @@ pub fn launch(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResul
     };
     config::push_recent(&mut cfg, &req.path);
     config::push_history(&mut cfg, entry.clone());
-    config::save(&cfg)?;
+    crate::integration::save_and_notify(&app, &cfg)?;
+    crate::integration::tray::rebuild(&app);
     Ok(entry)
 }
 

@@ -77,3 +77,4 @@ export const notify = (title: string, body: string) => invoke<void>("notify", { 
 export { errorText } from "./i18n/errors";
 export const takePendingOpen = () => invoke<string | null>("take_pending_open");
 export const updateInstall = () => invoke<void>("update_install");
+export const takePendingUpdate = () => invoke<{ version: string; notes: string | null } | null>("take_pending_update");

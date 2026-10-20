@@ -1,6 +1,6 @@
 //! Update check / install (tauri-plugin-updater). Failures (offline, no release) are silent.
 use serde::Serialize;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
 
 use crate::config;
@@ -48,7 +48,11 @@ pub fn check_on_startup(app: AppHandle) {
         let Ok(Some(update)) = u.check().await else { return };
         match action {
             Action::Notify => {
-                let _ = app.emit("update-available", UpdateInfo { version: update.version.clone(), notes: update.body.clone() });
+                let info = UpdateInfo { version: update.version.clone(), notes: update.body.clone() };
+                if let Ok(mut g) = app.state::<super::PendingUpdate>().0.lock() {
+                    *g = Some(info.clone());
+                }
+                let _ = app.emit("update-available", info);
             }
             Action::Install => {
                 if update.download_and_install(|_, _| {}, || {}).await.is_ok() {

@@ -64,11 +64,11 @@ pub fn refresh_if_enabled() {
 }
 
 #[tauri::command]
-pub fn set_explorer_menu(enabled: bool) -> AppResult<()> {
+pub fn set_explorer_menu(app: tauri::AppHandle, enabled: bool) -> AppResult<()> {
     apply(enabled)?;
     let mut cfg = config::load();
     cfg.explorer_menu = enabled;
-    config::save(&cfg)
+    super::save_and_notify(&app, &cfg)
 }
 
 #[cfg(test)]

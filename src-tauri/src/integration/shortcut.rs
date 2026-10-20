@@ -41,7 +41,7 @@ pub fn set_shortcut(app: AppHandle, shortcut: String) -> AppResult<()> {
         return Err(if e.code == "shortcut_invalid" { e } else { AppError::new("shortcut_taken", e.message) });
     }
     cfg.shortcut = shortcut;
-    config::save(&cfg)
+    super::save_and_notify(&app, &cfg)
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useStore } from "../store";
-import { applyNavigate, applyOpenPath, applyLanguage } from "../integration/useAppEvents";
+import { applyConfig, applyNavigate, applyOpenPath, applyLanguage } from "../integration/useAppEvents";
 import { getLanguage } from "../i18n";
 
 describe("app events", () => {
@@ -27,5 +27,12 @@ describe("app events", () => {
     applyLanguage("fr");
     expect(getLanguage()).toBe("zh");
     applyLanguage("es");
+  });
+
+  it("config-changed replaces the store config (no stale autostart written back)", () => {
+    const base = { autostart: false, language: "es" } as never;
+    useStore.setState({ config: base });
+    applyConfig({ autostart: true, language: "en" } as never);
+    expect(useStore.getState().config).toMatchObject({ autostart: true, language: "en" });
   });
 });
