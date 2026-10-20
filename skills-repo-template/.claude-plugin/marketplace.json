@@ -1,0 +1,19 @@
+{
+  "name": "ideo-skills",
+  "owner": {
+    "name": "iDeo",
+    "email": "info@ideonetworks.com"
+  },
+  "plugins": [
+    {
+      "name": "ideo-skills",
+      "source": "./",
+      "description": "Skills de ejemplo de iDeo: estilo de commits y README en español.",
+      "version": "0.1.0",
+      "skills": [
+        "./skills/ideo-commit-style",
+        "./skills/ideo-readme-es"
+      ]
+    }
+  ]
+}
