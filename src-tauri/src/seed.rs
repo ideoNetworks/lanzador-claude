@@ -24,13 +24,24 @@ pub fn parse_pinned(s: &str) -> Vec<(String, Option<String>)> {
 }
 
 #[cfg(windows)]
-pub fn read_seed() -> Option<Seed> {
-    use winreg::{RegKey, enums::HKEY_CURRENT_USER};
-    let key = RegKey::predef(HKEY_CURRENT_USER).open_subkey(r"Software\iDeo\LanzadorClaude\Seed").ok()?;
+fn read_seed_from(root: winreg::HKEY) -> Option<Seed> {
+    use winreg::RegKey;
+    let key = RegKey::predef(root).open_subkey(r"SoftwareiDeoLanzadorClaudeSeed").ok()?;
     let autostart = key.get_value::<u32, _>("Autostart").map(|v| v != 0).unwrap_or(false);
     let profile = key.get_value::<String, _>("Profile").ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
     let pinned = key.get_value::<String, _>("Pinned").map(|s| parse_pinned(&s)).unwrap_or_default();
     Some(Seed { autostart, profile, pinned })
+}
+
+/// Per-user seed (NSIS) wins; machine-wide seed (MSI, `HKLM`) is the fallback.
+pub fn pick_seed(hkcu: Option<Seed>, hklm: Option<Seed>) -> Option<Seed> {
+    hkcu.or(hklm)
+}
+
+#[cfg(windows)]
+pub fn read_seed() -> Option<Seed> {
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    pick_seed(read_seed_from(HKEY_CURRENT_USER), read_seed_from(HKEY_LOCAL_MACHINE))
 }
 
 #[cfg(not(windows))]
@@ -77,6 +88,16 @@ mod tests {
         assert_eq!(got.get("flag.model"), Some(&Some("opus".to_string())));
         assert_eq!(got.get("flag.continue"), Some(&None));
         assert_eq!(got.len(), 2);
+    }
+
+    #[test]
+    fn pick_seed_prefers_hkcu_then_hklm() {
+        let u = Seed { autostart: true, profile: Some("safe".into()), pinned: vec![] };
+        let m = Seed { autostart: false, profile: Some("auto".into()), pinned: vec![] };
+        assert_eq!(pick_seed(Some(u.clone()), Some(m.clone())), Some(u.clone()));
+        assert_eq!(pick_seed(None, Some(m.clone())), Some(m));
+        assert_eq!(pick_seed(Some(u.clone()), None), Some(u));
+        assert_eq!(pick_seed(None, None), None);
     }
 
     #[test]

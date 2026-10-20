@@ -68,7 +68,9 @@
           "windows/wix/seed-fragment.wxs"
         ],
         "componentRefs": [
-          "SeedRegistry"
+          "SeedRegistry",
+          "SeedProfile",
+          "SeedPinned"
         ]
       }
     }

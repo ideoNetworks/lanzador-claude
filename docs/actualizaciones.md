@@ -82,10 +82,10 @@ El instalador escribe `HKCU\Software\iDeo\LanzadorClaude\Seed` (`Autostart` DWOR
 **NSIS (`setup.exe`)**, instalación por usuario:
 
 - Con interfaz: página "Opciones iniciales" tras elegir la carpeta (arranque con Windows, perfil inicial y 8 opciones fijadas).
-- Silenciosa (`/S`): no hay página; se escribe una semilla por defecto (`Autostart=0`, `Profile=""`, `Pinned=""`). Se puede sobrescribir (valores sin espacios):
+- Silenciosa (`/S`): no hay página; se escribe una semilla por defecto (`Autostart=0`, `Profile=""`, `Pinned=""`). Se puede sobrescribir con `/SEEDAUTOSTART=`, `/SEEDPROFILE=` y `/SEEDPINNED=` (valores sin espacios; no se usan `/AUTOSTART` etc. porque NSIS compararía `/P…` con el interruptor `/P` de modo pasivo):
 
   ```powershell
-  .\Lanzador*-setup.exe /S /AUTOSTART=1 /PROFILE=ps-opus /PINNED="flag.verbose;env.DISABLE_TELEMETRY=1"
+  .\Lanzador*-setup.exe /S /SEEDAUTOSTART=1 /SEEDPROFILE=ps-opus "/SEEDPINNED=flag.verbose;env.DISABLE_TELEMETRY=1"
   ```
 - Las actualizaciones (`/UPDATE`) no tocan la semilla.
 - Al desinstalar se borran la semilla, las claves del menú del Explorador (`Directory\shell\LanzadorClaude` y `Directory\Background\shell\LanzadorClaude`) y el valor de autoarranque. `%APPDATA%\iDeo\LanzadorClaude` (configuración) se conserva.
@@ -97,4 +97,4 @@ El instalador escribe `HKCU\Software\iDeo\LanzadorClaude\Seed` (`Autostart` DWOR
 msiexec /i "Lanzador Claude_0.1.0_x64_es-ES.msi" AUTOSTART=1 PROFILE=ps-opus PINNED="flag.verbose;env.DISABLE_TELEMETRY=1" /qn
 ```
 
-La plantilla WiX de Tauri es `perMachine` (requiere elevación; instala en Archivos de programa). El registro `HKCU` de la semilla se escribe en el perfil del usuario que ejecuta la instalación (el administrador elevado), así que en despliegues con otra cuenta (SCCM/Intune como SYSTEM) la semilla no llega al usuario final; usa el instalador NSIS por usuario en ese caso. Al desinstalar el MSI se borra la semilla, pero no las claves del menú del Explorador.
+La plantilla WiX de Tauri es `perMachine` (requiere elevación; instala en Archivos de programa). Por eso el MSI escribe la semilla a nivel de equipo en `HKLM\Software\iDeo\LanzadorClaude\Seed` (`Autostart` solo vale 1 si `AUTOSTART=1`; `Profile` y `Pinned` solo se escriben si no están vacíos). La app lee primero `HKCU` (instalador NSIS por usuario) y, si no existe esa clave, `HKLM`; así cada usuario final recibe la semilla en su primer arranque aunque el MSI lo despliegue SYSTEM u otra cuenta de administración. Al desinstalar el MSI se borra la semilla de `HKLM`, pero no las claves del menú del Explorador.

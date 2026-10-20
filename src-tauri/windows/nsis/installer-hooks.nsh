@@ -7,7 +7,7 @@
 ;
 ; Silent (/S) installs do not show the page. They still write a seed from defaults
 ; (Autostart=0, Profile="", Pinned="") unless overridden on the command line:
-;   setup.exe /S /AUTOSTART=1 /PROFILE=ps-opus "/PINNED=flag.verbose;env.DISABLE_TELEMETRY=1"
+;   setup.exe /S /SEEDAUTOSTART=1 /SEEDPROFILE=ps-opus "/SEEDPINNED=flag.verbose;env.DISABLE_TELEMETRY=1"
 ; Updates (/UPDATE) never touch the seed.
 
 !define SEED_KEY "Software\iDeo\LanzadorClaude\Seed"
@@ -213,10 +213,10 @@ LangString SeedPinnedLabel 2052 "默认固定的选项"
     ${EndIf}
 
     ; Command-line overrides (meant for silent deployments). Quotes are stripped first so that
-    ; "/PINNED=a;b" and /PINNED=a;b behave the same (values cannot contain spaces).
+    ; "/SEEDPINNED=a;b" and /SEEDPINNED=a;b behave the same (values cannot contain spaces).
     ${WordReplace} $CMDLINE '"' "" "+*" $1
     ClearErrors
-    ${GetOptions} $1 "/AUTOSTART=" $0
+    ${GetOptions} $1 "/SEEDAUTOSTART=" $0
     ${IfNot} ${Errors}
       ${If} $0 == "1"
         StrCpy $SeedAutostart 1
@@ -225,12 +225,12 @@ LangString SeedPinnedLabel 2052 "默认固定的选项"
       ${EndIf}
     ${EndIf}
     ClearErrors
-    ${GetOptions} $1 "/PROFILE=" $0
+    ${GetOptions} $1 "/SEEDPROFILE=" $0
     ${IfNot} ${Errors}
       StrCpy $SeedProfile $0
     ${EndIf}
     ClearErrors
-    ${GetOptions} $1 "/PINNED=" $0
+    ${GetOptions} $1 "/SEEDPINNED=" $0
     ${IfNot} ${Errors}
       StrCpy $SeedPinned $0
     ${EndIf}
