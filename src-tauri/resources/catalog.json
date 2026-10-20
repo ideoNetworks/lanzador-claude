@@ -1,0 +1,1299 @@
+[
+ {
+  "id": "flag.model",
+  "kind": "flag",
+  "key": "--model",
+  "group": "model",
+  "value": {
+   "kind": "select",
+   "options": [
+    "fable",
+    "opus",
+    "sonnet",
+    "haiku"
+   ]
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modelo de la sesión",
+    "t": "Elige el modelo con el que arranca Claude. Acepta alias (fable, opus, sonnet, haiku) o el nombre completo del modelo."
+   },
+   "en": {
+    "d": "Session model",
+    "t": "Choose the model Claude starts with. Accepts aliases (fable, opus, sonnet, haiku) or a full model name."
+   },
+   "zh": {
+    "d": "会话模型",
+    "t": "选择 Claude 启动时使用的模型。可使用别名（fable、opus、sonnet、haiku）或完整模型名称。"
+   }
+  }
+ },
+ {
+  "id": "flag.effort",
+  "kind": "flag",
+  "key": "--effort",
+  "group": "model",
+  "value": {
+   "kind": "select",
+   "options": [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max"
+   ]
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Nivel de esfuerzo",
+    "t": "Cuánto esfuerzo de razonamiento dedica Claude en esta sesión, de low (mínimo) a max (máximo)."
+   },
+   "en": {
+    "d": "Effort level",
+    "t": "How much reasoning effort Claude spends in this session, from low (minimum) to max (maximum)."
+   },
+   "zh": {
+    "d": "努力程度",
+    "t": "Claude 在本次会话中投入的推理力度，从 low（最低）到 max（最高）。"
+   }
+  }
+ },
+ {
+  "id": "flag.fallback-model",
+  "kind": "flag",
+  "key": "--fallback-model",
+  "group": "model",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "sonnet"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modelo de reserva",
+    "t": "Modelo (o lista separada por comas) al que cambia Claude si el principal está saturado o no disponible."
+   },
+   "en": {
+    "d": "Fallback model",
+    "t": "Model (or comma-separated list) Claude switches to when the main one is overloaded or unavailable."
+   },
+   "zh": {
+    "d": "备用模型",
+    "t": "当主模型过载或不可用时，Claude 自动切换到的模型（可用逗号分隔多个）。"
+   }
+  }
+ },
+ {
+  "id": "flag.continue",
+  "kind": "flag",
+  "key": "--continue",
+  "group": "ctx",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Retoma la última conversación de esta carpeta",
+    "t": "Abre Claude continuando la conversación más reciente del directorio de trabajo, con todo su contexto."
+   },
+   "en": {
+    "d": "Resume the latest conversation in this folder",
+    "t": "Opens Claude continuing the most recent conversation in the working directory, with its full context."
+   },
+   "zh": {
+    "d": "继续此文件夹中最近的对话",
+    "t": "打开 Claude 并继续工作目录中最近的一次对话，保留全部上下文。"
+   }
+  }
+ },
+ {
+  "id": "flag.resume",
+  "kind": "flag",
+  "key": "--resume",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "id o nombre"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Elegir una conversación anterior",
+    "t": "Reanuda una conversación por id o nombre. Sin valor, muestra la lista de conversaciones para elegir."
+   },
+   "en": {
+    "d": "Pick a previous conversation",
+    "t": "Resumes a conversation by id or name. With no value, shows the list of conversations to choose from."
+   },
+   "zh": {
+    "d": "选择以前的对话",
+    "t": "按 id 或名称恢复对话。不填值时显示对话列表供选择。"
+   }
+  }
+ },
+ {
+  "id": "flag.name",
+  "kind": "flag",
+  "key": "--name",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "mi-sesion"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Nombre de la sesión",
+    "t": "Pone un nombre visible a la sesión (en el prompt, en el selector de /resume y en el título del terminal)."
+   },
+   "en": {
+    "d": "Session name",
+    "t": "Sets a display name for the session (shown in the prompt, the /resume picker and the terminal title)."
+   },
+   "zh": {
+    "d": "会话名称",
+    "t": "为会话设置显示名称（显示在提示框、/resume 选择器和终端标题中）。"
+   }
+  }
+ },
+ {
+  "id": "flag.fork-session",
+  "kind": "flag",
+  "key": "--fork-session",
+  "group": "ctx",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Al reanudar, crea una sesión nueva",
+    "t": "Al usar --resume o --continue, crea un id de sesión nuevo en lugar de reutilizar el original."
+   },
+   "en": {
+    "d": "When resuming, create a new session",
+    "t": "When used with --resume or --continue, creates a new session id instead of reusing the original."
+   },
+   "zh": {
+    "d": "恢复时创建新会话",
+    "t": "与 --resume 或 --continue 配合使用时，创建新的会话 ID 而不是沿用原来的。"
+   }
+  }
+ },
+ {
+  "id": "flag.permission-mode",
+  "kind": "flag",
+  "key": "--permission-mode",
+  "group": "perm",
+  "value": {
+   "kind": "select",
+   "options": [
+    "manual",
+    "acceptEdits",
+    "plan",
+    "auto",
+    "dontAsk",
+    "bypassPermissions"
+   ]
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modo de permisos inicial",
+    "t": "Con qué modo empieza la sesión: preguntar siempre, aceptar ediciones, modo plan (solo planifica), automático, no preguntar o saltar permisos."
+   },
+   "en": {
+    "d": "Initial permission mode",
+    "t": "Which mode the session starts in: always ask, accept edits, plan (plans only), auto, don't ask or bypass permissions."
+   },
+   "zh": {
+    "d": "初始权限模式",
+    "t": "会话启动时的模式：始终询问、接受编辑、计划（仅规划）、自动、不再询问或绕过权限。"
+   }
+  }
+ },
+ {
+  "id": "flag.dangerously-skip-permissions",
+  "kind": "flag",
+  "key": "--dangerously-skip-permissions",
+  "group": "perm",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": true,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Omite todas las confirmaciones",
+    "t": "Claude ejecuta comandos y edita archivos sin pedir permiso. Úsalo solo en entornos aislados o contenedores sin internet."
+   },
+   "en": {
+    "d": "Skips every confirmation",
+    "t": "Claude runs commands and edits files without asking. Use only in isolated environments or containers with no internet."
+   },
+   "zh": {
+    "d": "跳过所有确认",
+    "t": "Claude 将不经询问直接执行命令和编辑文件。仅在无网络的隔离环境或容器中使用。"
+   }
+  }
+ },
+ {
+  "id": "flag.allow-dangerously-skip-permissions",
+  "kind": "flag",
+  "key": "--allow-dangerously-skip-permissions",
+  "group": "perm",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": true,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Permite omitir permisos como opción",
+    "t": "Habilita la opción de saltar todos los permisos sin activarla por defecto. Solo para entornos aislados."
+   },
+   "en": {
+    "d": "Allow skipping permissions as an option",
+    "t": "Makes bypassing all permission checks available without enabling it by default. Sandboxes only."
+   },
+   "zh": {
+    "d": "允许将跳过权限作为选项",
+    "t": "使“跳过所有权限检查”可用，但默认不启用。仅限沙箱环境。"
+   }
+  }
+ },
+ {
+  "id": "flag.allowed-tools",
+  "kind": "flag",
+  "key": "--allowed-tools",
+  "group": "perm",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "Bash(git *) Edit"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Herramientas permitidas",
+    "t": "Lista de herramientas que Claude puede usar sin preguntar, separadas por comas o espacios (p. ej. \"Bash(git *) Edit\")."
+   },
+   "en": {
+    "d": "Allowed tools",
+    "t": "Tools Claude may use without asking, separated by commas or spaces (e.g. \"Bash(git *) Edit\")."
+   },
+   "zh": {
+    "d": "允许的工具",
+    "t": "Claude 无需询问即可使用的工具，以逗号或空格分隔（例如 \"Bash(git *) Edit\"）。"
+   }
+  }
+ },
+ {
+  "id": "flag.disallowed-tools",
+  "kind": "flag",
+  "key": "--disallowed-tools",
+  "group": "perm",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "Bash(rm *)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Herramientas denegadas",
+    "t": "Lista de herramientas que Claude no puede usar, separadas por comas o espacios (p. ej. \"Bash(git *) Edit\")."
+   },
+   "en": {
+    "d": "Denied tools",
+    "t": "Tools Claude may not use, separated by commas or spaces (e.g. \"Bash(git *) Edit\")."
+   },
+   "zh": {
+    "d": "禁用的工具",
+    "t": "Claude 不得使用的工具，以逗号或空格分隔（例如 \"Bash(git *) Edit\"）。"
+   }
+  }
+ },
+ {
+  "id": "flag.safe-mode",
+  "kind": "flag",
+  "key": "--safe-mode",
+  "group": "perm",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Arranca sin personalizaciones",
+    "t": "Desactiva CLAUDE.md, skills, plugins, hooks y MCP para diagnosticar una configuración rota. Los permisos siguen funcionando."
+   },
+   "en": {
+    "d": "Start without customizations",
+    "t": "Disables CLAUDE.md, skills, plugins, hooks and MCP to troubleshoot a broken setup. Permissions still work."
+   },
+   "zh": {
+    "d": "不加载自定义项启动",
+    "t": "禁用 CLAUDE.md、技能、插件、钩子和 MCP，用于排查损坏的配置。权限仍然有效。"
+   }
+  }
+ },
+ {
+  "id": "flag.restricted",
+  "kind": "flag",
+  "key": "--restricted",
+  "group": "perm",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modo restringido",
+    "t": "Quita las herramientas que ejecutan código, ignora los ajustes de usuario/proyecto y limita los archivos al directorio de trabajo."
+   },
+   "en": {
+    "d": "Restricted mode",
+    "t": "Removes code-running tools, ignores user/project settings and confines file access to the working directories."
+   },
+   "zh": {
+    "d": "受限模式",
+    "t": "移除可执行代码的工具，忽略用户/项目设置，并将文件访问限制在工作目录内。"
+   }
+  }
+ },
+ {
+  "id": "flag.add-dir",
+  "kind": "flag",
+  "key": "--add-dir",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "C:\\Compartido;D:\\Libs"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Carpetas extra a las que puede acceder",
+    "t": "Permite a Claude leer y editar otras carpetas además de la de trabajo. Sepáralas con \";\". Útil para librerías compartidas."
+   },
+   "en": {
+    "d": "Extra folders it can access",
+    "t": "Lets Claude read and edit other folders besides the working one. Separate them with \";\". Handy for shared libraries."
+   },
+   "zh": {
+    "d": "可访问的额外文件夹",
+    "t": "允许 Claude 读写工作目录以外的其他文件夹，用“;”分隔。适用于共享库。"
+   }
+  }
+ },
+ {
+  "id": "flag.append-system-prompt",
+  "kind": "flag",
+  "key": "--append-system-prompt",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "Responde en español"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Añade instrucciones al inicio",
+    "t": "Añade texto propio a las instrucciones de sistema de Claude para toda la sesión."
+   },
+   "en": {
+    "d": "Append startup instructions",
+    "t": "Adds your own text to Claude's system instructions for the whole session."
+   },
+   "zh": {
+    "d": "追加启动指令",
+    "t": "在整个会话中向 Claude 的系统指令追加自定义文本。"
+   }
+  }
+ },
+ {
+  "id": "flag.system-prompt",
+  "kind": "flag",
+  "key": "--system-prompt",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "Eres un revisor de código"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Sustituye las instrucciones de sistema",
+    "t": "Reemplaza por completo las instrucciones de sistema de Claude con tu propio texto durante la sesión."
+   },
+   "en": {
+    "d": "Replace the system prompt",
+    "t": "Fully replaces Claude's system instructions with your own text for the session."
+   },
+   "zh": {
+    "d": "替换系统提示",
+    "t": "在本次会话中用你自己的文本完全替换 Claude 的系统指令。"
+   }
+  }
+ },
+ {
+  "id": "flag.mcp-config",
+  "kind": "flag",
+  "key": "--mcp-config",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": ".mcp.json"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Carga servidores MCP desde un archivo",
+    "t": "Indica un archivo JSON con servidores MCP (herramientas externas) que Claude podrá usar."
+   },
+   "en": {
+    "d": "Load MCP servers from a file",
+    "t": "Points to a JSON file with MCP servers (external tools) Claude can use."
+   },
+   "zh": {
+    "d": "从文件加载 MCP 服务器",
+    "t": "指定包含 MCP 服务器（外部工具）的 JSON 文件，供 Claude 使用。"
+   }
+  }
+ },
+ {
+  "id": "flag.strict-mcp-config",
+  "kind": "flag",
+  "key": "--strict-mcp-config",
+  "group": "ctx",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Solo servidores MCP del archivo indicado",
+    "t": "Usa únicamente los servidores de --mcp-config e ignora cualquier otra configuración MCP."
+   },
+   "en": {
+    "d": "Only MCP servers from the given file",
+    "t": "Uses only the servers from --mcp-config and ignores every other MCP configuration."
+   },
+   "zh": {
+    "d": "仅使用指定文件中的 MCP 服务器",
+    "t": "只使用 --mcp-config 中的服务器，忽略其他所有 MCP 配置。"
+   }
+  }
+ },
+ {
+  "id": "flag.settings",
+  "kind": "flag",
+  "key": "--settings",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "ajustes.json"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Carga ajustes adicionales",
+    "t": "Ruta a un archivo JSON de ajustes, o un JSON en texto, que se carga además de los ajustes habituales."
+   },
+   "en": {
+    "d": "Load additional settings",
+    "t": "Path to a settings JSON file, or a JSON string, loaded on top of the usual settings."
+   },
+   "zh": {
+    "d": "加载额外设置",
+    "t": "设置 JSON 文件的路径（或 JSON 字符串），在常规设置之外额外加载。"
+   }
+  }
+ },
+ {
+  "id": "flag.setting-sources",
+  "kind": "flag",
+  "key": "--setting-sources",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "user,project,local"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Orígenes de ajustes a cargar",
+    "t": "Lista separada por comas de los orígenes de ajustes que se cargan: user, project y/o local."
+   },
+   "en": {
+    "d": "Settings sources to load",
+    "t": "Comma-separated list of the settings sources to load: user, project and/or local."
+   },
+   "zh": {
+    "d": "要加载的设置来源",
+    "t": "以逗号分隔的设置来源列表：user、project 和/或 local。"
+   }
+  }
+ },
+ {
+  "id": "flag.plugin-dir",
+  "kind": "flag",
+  "key": "--plugin-dir",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "C:\\plugins\\mi-plugin"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Carga un plugin desde una carpeta",
+    "t": "Carga un plugin desde un directorio o .zip solo para esta sesión."
+   },
+   "en": {
+    "d": "Load a plugin from a folder",
+    "t": "Loads a plugin from a directory or .zip for this session only."
+   },
+   "zh": {
+    "d": "从文件夹加载插件",
+    "t": "仅在本次会话中从目录或 .zip 加载插件。"
+   }
+  }
+ },
+ {
+  "id": "flag.agent",
+  "kind": "flag",
+  "key": "--agent",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "revisor"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Agente de la sesión",
+    "t": "Usa el agente indicado en esta sesión, con prioridad sobre el ajuste \"agent\"."
+   },
+   "en": {
+    "d": "Session agent",
+    "t": "Uses the given agent for this session, overriding the \"agent\" setting."
+   },
+   "zh": {
+    "d": "会话使用的智能体",
+    "t": "在本次会话中使用指定的智能体，优先于“agent”设置。"
+   }
+  }
+ },
+ {
+  "id": "flag.worktree",
+  "kind": "flag",
+  "key": "--worktree",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "nombre (opcional)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Crea un git worktree para la sesión",
+    "t": "Crea un worktree de git nuevo para esta sesión. El nombre es opcional; déjalo vacío para usar uno automático."
+   },
+   "en": {
+    "d": "Create a git worktree for the session",
+    "t": "Creates a new git worktree for this session. The name is optional; leave it empty for an automatic one."
+   },
+   "zh": {
+    "d": "为会话创建 git worktree",
+    "t": "为本次会话创建新的 git worktree。名称可选，留空则自动生成。"
+   }
+  }
+ },
+ {
+  "id": "flag.autocompact",
+  "kind": "flag",
+  "key": "--autocompact",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "auto o 200k"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Ventana de autocompactado",
+    "t": "Tamaño de la ventana de autocompactado: \"auto\" o un número de tokens entre 100k y 1M."
+   },
+   "en": {
+    "d": "Auto-compact window",
+    "t": "Auto-compact window size: \"auto\" or a token count between 100k and 1M."
+   },
+   "zh": {
+    "d": "自动压缩窗口",
+    "t": "自动压缩窗口大小：“auto”或 100k 至 1M 之间的 token 数。"
+   }
+  }
+ },
+ {
+  "id": "flag.bare",
+  "kind": "flag",
+  "key": "--bare",
+  "group": "ctx",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modo mínimo",
+    "t": "Omite hooks, LSP, plugins, memoria automática y CLAUDE.md. Solo acepta ANTHROPIC_API_KEY como autenticación."
+   },
+   "en": {
+    "d": "Minimal mode",
+    "t": "Skips hooks, LSP, plugins, auto-memory and CLAUDE.md. Only ANTHROPIC_API_KEY is accepted for authentication."
+   },
+   "zh": {
+    "d": "极简模式",
+    "t": "跳过钩子、LSP、插件、自动记忆和 CLAUDE.md。身份验证仅接受 ANTHROPIC_API_KEY。"
+   }
+  }
+ },
+ {
+  "id": "flag.verbose",
+  "kind": "flag",
+  "key": "--verbose",
+  "group": "dbg",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Salida detallada",
+    "t": "Muestra información detallada de cada paso que da Claude."
+   },
+   "en": {
+    "d": "Detailed output",
+    "t": "Shows detailed information about each step Claude takes."
+   },
+   "zh": {
+    "d": "详细输出",
+    "t": "显示 Claude 每一步的详细信息。"
+   }
+  }
+ },
+ {
+  "id": "flag.debug",
+  "kind": "flag",
+  "key": "--debug",
+  "group": "dbg",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "filtro (opcional): hooks,mcp"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modo depuración",
+    "t": "Activa los registros de depuración. Filtro opcional por categorías (p. ej. hooks,mcp); vacío para activar todo."
+   },
+   "en": {
+    "d": "Debug mode",
+    "t": "Turns on debug logging. Optional category filter (e.g. hooks,mcp); leave empty to enable everything."
+   },
+   "zh": {
+    "d": "调试模式",
+    "t": "开启调试日志。可选按类别过滤（如 hooks,mcp），留空则全部开启。"
+   }
+  }
+ },
+ {
+  "id": "flag.debug-file",
+  "kind": "flag",
+  "key": "--debug-file",
+  "group": "dbg",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "C:\\logs\\claude-debug.log"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Guarda el registro de depuración en un archivo",
+    "t": "Escribe los registros de depuración en la ruta indicada (activa también el modo depuración)."
+   },
+   "en": {
+    "d": "Write the debug log to a file",
+    "t": "Writes debug logs to the given path (also enables debug mode)."
+   },
+   "zh": {
+    "d": "将调试日志写入文件",
+    "t": "把调试日志写入指定路径（同时启用调试模式）。"
+   }
+  }
+ },
+ {
+  "id": "flag.ide",
+  "kind": "flag",
+  "key": "--ide",
+  "group": "other",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Conecta con el IDE abierto",
+    "t": "Se conecta automáticamente al IDE (por ejemplo VS Code) si hay exactamente uno disponible."
+   },
+   "en": {
+    "d": "Connect to the open IDE",
+    "t": "Automatically connects to the IDE (for example VS Code) if exactly one is available."
+   },
+   "zh": {
+    "d": "连接已打开的 IDE",
+    "t": "如果恰好有一个可用的 IDE（如 VS Code），则自动连接。"
+   }
+  }
+ },
+ {
+  "id": "flag.chrome",
+  "kind": "flag",
+  "key": "--chrome",
+  "group": "other",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Activa la integración con Chrome",
+    "t": "Habilita Claude in Chrome para que Claude pueda manejar el navegador."
+   },
+   "en": {
+    "d": "Enable Chrome integration",
+    "t": "Enables Claude in Chrome so Claude can drive the browser."
+   },
+   "zh": {
+    "d": "启用 Chrome 集成",
+    "t": "启用 Claude in Chrome，使 Claude 可以操作浏览器。"
+   }
+  }
+ },
+ {
+  "id": "flag.no-chrome",
+  "kind": "flag",
+  "key": "--no-chrome",
+  "group": "other",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Desactiva la integración con Chrome",
+    "t": "Deshabilita Claude in Chrome en esta sesión."
+   },
+   "en": {
+    "d": "Disable Chrome integration",
+    "t": "Disables Claude in Chrome for this session."
+   },
+   "zh": {
+    "d": "禁用 Chrome 集成",
+    "t": "在本次会话中禁用 Claude in Chrome。"
+   }
+  }
+ },
+ {
+  "id": "flag.remote-control",
+  "kind": "flag",
+  "key": "--remote-control",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "nombre (opcional)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Inicia con Remote Control",
+    "t": "Arranca una sesión interactiva con Remote Control activado. El nombre es opcional; déjalo vacío si no lo necesitas."
+   },
+   "en": {
+    "d": "Start with Remote Control",
+    "t": "Starts an interactive session with Remote Control enabled. The name is optional; leave it empty if not needed."
+   },
+   "zh": {
+    "d": "启用 Remote Control 启动",
+    "t": "启动启用了 Remote Control 的交互式会话。名称可选，不需要时留空。"
+   }
+  }
+ },
+ {
+  "id": "flag.ax-screen-reader",
+  "kind": "flag",
+  "key": "--ax-screen-reader",
+  "group": "other",
+  "value": {
+   "kind": "none",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Salida para lectores de pantalla",
+    "t": "Muestra texto plano, sin bordes decorativos ni animaciones, para que los lectores de pantalla lo lean mejor."
+   },
+   "en": {
+    "d": "Screen-reader friendly output",
+    "t": "Renders flat text with no decorative borders or animations, easier for screen readers."
+   },
+   "zh": {
+    "d": "读屏器友好输出",
+    "t": "输出纯文本，不带装饰边框和动画，便于读屏器朗读。"
+   }
+  }
+ },
+ {
+  "id": "env.CLAUDE_CODE_USE_POWERSHELL_TOOL",
+  "kind": "env",
+  "key": "CLAUDE_CODE_USE_POWERSHELL_TOOL",
+  "group": "ctx",
+  "value": {
+   "kind": "fixed",
+   "options": [],
+   "fixed": "1"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Usa PowerShell como herramienta de terminal",
+    "t": "Hace que Claude ejecute los comandos con PowerShell en lugar de Bash en Windows."
+   },
+   "en": {
+    "d": "Use PowerShell as the shell tool",
+    "t": "Makes Claude run commands with PowerShell instead of Bash on Windows."
+   },
+   "zh": {
+    "d": "使用 PowerShell 作为终端工具",
+    "t": "让 Claude 在 Windows 上使用 PowerShell 而非 Bash 执行命令。"
+   }
+  }
+ },
+ {
+  "id": "env.ANTHROPIC_MODEL",
+  "kind": "env",
+  "key": "ANTHROPIC_MODEL",
+  "group": "model",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "claude-sonnet-4-5"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Modelo por defecto",
+    "t": "Nombre o alias del modelo que se usa por defecto cuando no se indica --model."
+   },
+   "en": {
+    "d": "Default model",
+    "t": "Name or alias of the model used by default when --model is not given."
+   },
+   "zh": {
+    "d": "默认模型",
+    "t": "未指定 --model 时默认使用的模型名称或别名。"
+   }
+  }
+ },
+ {
+  "id": "env.MAX_THINKING_TOKENS",
+  "kind": "env",
+  "key": "MAX_THINKING_TOKENS",
+  "group": "model",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "31999"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Presupuesto de razonamiento",
+    "t": "Máximo de tokens que Claude puede dedicar a pensar antes de responder."
+   },
+   "en": {
+    "d": "Thinking budget",
+    "t": "Maximum tokens Claude may spend thinking before answering."
+   },
+   "zh": {
+    "d": "思考预算",
+    "t": "Claude 回答前可用于思考的最大 token 数。"
+   }
+  }
+ },
+ {
+  "id": "env.CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+  "kind": "env",
+  "key": "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+  "group": "model",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "32000"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Límite de tokens por respuesta",
+    "t": "Limita la longitud máxima de cada respuesta de Claude."
+   },
+   "en": {
+    "d": "Output token limit per reply",
+    "t": "Caps the maximum length of each Claude reply."
+   },
+   "zh": {
+    "d": "每次回复的输出 token 上限",
+    "t": "限制 Claude 每次回复的最大长度。"
+   }
+  }
+ },
+ {
+  "id": "env.BASH_DEFAULT_TIMEOUT_MS",
+  "kind": "env",
+  "key": "BASH_DEFAULT_TIMEOUT_MS",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "120000"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Tiempo máximo por comando",
+    "t": "Milisegundos que espera Claude a que termine un comando antes de cortarlo."
+   },
+   "en": {
+    "d": "Default command timeout",
+    "t": "Milliseconds Claude waits for a command before stopping it."
+   },
+   "zh": {
+    "d": "命令默认超时",
+    "t": "Claude 在终止命令前等待的毫秒数。"
+   }
+  }
+ },
+ {
+  "id": "env.BASH_MAX_TIMEOUT_MS",
+  "kind": "env",
+  "key": "BASH_MAX_TIMEOUT_MS",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "600000"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Tiempo máximo permitido por comando",
+    "t": "Tope en milisegundos que Claude puede pedir para un comando de larga duración."
+   },
+   "en": {
+    "d": "Maximum command timeout",
+    "t": "Upper limit in milliseconds Claude may request for a long-running command."
+   },
+   "zh": {
+    "d": "命令最大超时",
+    "t": "Claude 可为长时间运行的命令申请的毫秒数上限。"
+   }
+  }
+ },
+ {
+  "id": "env.DISABLE_TELEMETRY",
+  "kind": "env",
+  "key": "DISABLE_TELEMETRY",
+  "group": "other",
+  "value": {
+   "kind": "fixed",
+   "options": [],
+   "fixed": "1"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Desactiva la telemetría",
+    "t": "Evita que Claude Code envíe datos de uso."
+   },
+   "en": {
+    "d": "Turn off telemetry",
+    "t": "Stops Claude Code from sending usage data."
+   },
+   "zh": {
+    "d": "关闭遥测",
+    "t": "阻止 Claude Code 发送使用数据。"
+   }
+  }
+ },
+ {
+  "id": "env.DISABLE_AUTOUPDATER",
+  "kind": "env",
+  "key": "DISABLE_AUTOUPDATER",
+  "group": "other",
+  "value": {
+   "kind": "fixed",
+   "options": [],
+   "fixed": "1"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Desactiva la actualización automática",
+    "t": "Impide que Claude Code se actualice solo."
+   },
+   "en": {
+    "d": "Turn off auto-updates",
+    "t": "Prevents Claude Code from updating itself."
+   },
+   "zh": {
+    "d": "关闭自动更新",
+    "t": "阻止 Claude Code 自行更新。"
+   }
+  }
+ },
+ {
+  "id": "env.DISABLE_ERROR_REPORTING",
+  "kind": "env",
+  "key": "DISABLE_ERROR_REPORTING",
+  "group": "other",
+  "value": {
+   "kind": "fixed",
+   "options": [],
+   "fixed": "1"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Desactiva el informe de errores",
+    "t": "Evita que Claude Code envíe informes de errores."
+   },
+   "en": {
+    "d": "Turn off error reporting",
+    "t": "Stops Claude Code from sending error reports."
+   },
+   "zh": {
+    "d": "关闭错误报告",
+    "t": "阻止 Claude Code 发送错误报告。"
+   }
+  }
+ },
+ {
+  "id": "env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+  "kind": "env",
+  "key": "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+  "group": "other",
+  "value": {
+   "kind": "fixed",
+   "options": [],
+   "fixed": "1"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Sin tráfico no esencial",
+    "t": "Desactiva actualizaciones automáticas, telemetría e informes de errores de una vez."
+   },
+   "en": {
+    "d": "No non-essential traffic",
+    "t": "Turns off auto-updates, telemetry and error reporting in one go."
+   },
+   "zh": {
+    "d": "禁用非必要流量",
+    "t": "一次性关闭自动更新、遥测和错误报告。"
+   }
+  }
+ },
+ {
+  "id": "env.HTTPS_PROXY",
+  "kind": "env",
+  "key": "HTTPS_PROXY",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "http://proxy:8080"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Proxy para HTTPS",
+    "t": "Dirección del proxy que usa Claude para las conexiones HTTPS."
+   },
+   "en": {
+    "d": "HTTPS proxy",
+    "t": "Address of the proxy Claude uses for HTTPS connections."
+   },
+   "zh": {
+    "d": "HTTPS 代理",
+    "t": "Claude 进行 HTTPS 连接时使用的代理地址。"
+   }
+  }
+ },
+ {
+  "id": "env.HTTP_PROXY",
+  "kind": "env",
+  "key": "HTTP_PROXY",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "http://proxy:8080"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Proxy para HTTP",
+    "t": "Dirección del proxy que usa Claude para las conexiones HTTP."
+   },
+   "en": {
+    "d": "HTTP proxy",
+    "t": "Address of the proxy Claude uses for HTTP connections."
+   },
+   "zh": {
+    "d": "HTTP 代理",
+    "t": "Claude 进行 HTTP 连接时使用的代理地址。"
+   }
+  }
+ },
+ {
+  "id": "env.NO_PROXY",
+  "kind": "env",
+  "key": "NO_PROXY",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "options": [],
+   "placeholder": "localhost,.interno.local"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Excepciones del proxy",
+    "t": "Dominios y direcciones, separados por comas, a los que Claude se conecta sin pasar por el proxy."
+   },
+   "en": {
+    "d": "Proxy exceptions",
+    "t": "Comma-separated domains and addresses Claude reaches without going through the proxy."
+   },
+   "zh": {
+    "d": "代理例外",
+    "t": "Claude 不经代理直接访问的域名和地址，以逗号分隔。"
+   }
+  }
+ },
+ {
+  "id": "env.ANTHROPIC_API_KEY",
+  "kind": "env",
+  "key": "ANTHROPIC_API_KEY",
+  "group": "model",
+  "value": {
+   "kind": "secret",
+   "options": []
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Clave de API de Anthropic",
+    "t": "Clave de API que usa Claude. Se guarda en el Administrador de credenciales de Windows y nunca se muestra en la vista previa."
+   },
+   "en": {
+    "d": "Anthropic API key",
+    "t": "API key Claude uses. Stored in Windows Credential Manager and never shown in the preview."
+   },
+   "zh": {
+    "d": "Anthropic API 密钥",
+    "t": "Claude 使用的 API 密钥。保存在 Windows 凭据管理器中，预览中不会显示。"
+   }
+  }
+ }
+]
