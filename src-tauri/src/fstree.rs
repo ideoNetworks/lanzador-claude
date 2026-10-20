@@ -92,7 +92,13 @@ pub fn list_dir(path: &str, show_hidden: bool) -> AppResult<Vec<DirEntry>> {
 #[cfg(windows)]
 pub fn list_roots() -> Vec<DriveEntry> {
     use windows_sys::Win32::Storage::FileSystem::{GetDriveTypeW, GetLogicalDrives, GetVolumeInformationW};
+    use windows_sys::Win32::System::Diagnostics::Debug::{
+        SEM_FAILCRITICALERRORS, SEM_NOOPENFILEERRORBOX, SetThreadErrorMode,
+    };
     // SAFETY: plain Win32 queries; buffers are sized as declared and root is NUL-terminated.
+    // Suppress "no disk in drive" dialogs for the duration of the probing (restored below).
+    let mut prev_mode = 0u32;
+    unsafe { SetThreadErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX, &mut prev_mode) };
     let mask = unsafe { GetLogicalDrives() };
     let mut roots = Vec::new();
     for i in 0..26u32 {
@@ -108,28 +114,38 @@ pub fn list_roots() -> Vec<DriveEntry> {
             4 => "network",
             _ => "other",
         };
-        let mut label = [0u16; 261];
-        let ok = unsafe {
-            GetVolumeInformationW(
-                wide.as_ptr(),
-                label.as_mut_ptr(),
-                label.len() as u32,
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                std::ptr::null_mut(),
-                0,
-            )
-        };
-        let label = if ok != 0 {
-            let n = label.iter().position(|&c| c == 0).unwrap_or(label.len());
-            String::from_utf16_lossy(&label[..n])
+        let fallback = format!("{letter}:");
+        let label = if needs_label_probe(kind) {
+            let mut buf = [0u16; 261];
+            let ok = unsafe {
+                GetVolumeInformationW(
+                    wide.as_ptr(),
+                    buf.as_mut_ptr(),
+                    buf.len() as u32,
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    std::ptr::null_mut(),
+                    0,
+                )
+            };
+            let n = buf.iter().position(|&c| c == 0).unwrap_or(buf.len());
+            let text = if ok != 0 { String::from_utf16_lossy(&buf[..n]) } else { String::new() };
+            if text.is_empty() { fallback } else { text }
         } else {
-            String::new()
+            fallback
         };
         roots.push(DriveEntry { path, label, kind: kind.to_string() });
     }
+    // SAFETY: restores the mode saved above.
+    unsafe { SetThreadErrorMode(prev_mode, std::ptr::null_mut()) };
     roots
+}
+
+/// Network drives are never queried (a dead mapping blocks for many seconds); the rest are.
+#[cfg(any(windows, test))]
+fn needs_label_probe(kind: &str) -> bool {
+    kind != "network"
 }
 
 #[cfg(not(windows))]
@@ -245,6 +261,14 @@ mod tests {
         }
         // Listing the dangling junction itself is a clean error, not a panic.
         assert!(list_dir(link.to_str().unwrap(), false).is_err());
+    }
+
+    #[test]
+    fn needs_label_probe_skips_network_only() {
+        assert!(needs_label_probe("fixed"));
+        assert!(needs_label_probe("removable"));
+        assert!(needs_label_probe("other"));
+        assert!(!needs_label_probe("network"));
     }
 
     #[cfg(windows)]
