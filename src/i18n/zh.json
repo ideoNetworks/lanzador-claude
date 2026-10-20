@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Claude 启动器" },
+  "app": {
+    "name": "Claude 启动器"
+  },
   "top": {
     "search": "搜索文件夹或项目…",
     "language": "语言",
@@ -53,6 +55,95 @@
     "repo_url_empty": "缺少技能仓库 URL。",
     "git_failed": "Git 执行失败。请检查仓库 URL 和网络连接。",
     "invalid_name": "名称无效。",
-    "already_exists": "已存在同名项目。"
+    "already_exists": "已存在同名项目。",
+    "vscode_not_found": "未找到 VS Code（code 命令）。请安装或将其加入 PATH。"
+  },
+  "tree": {
+    "recent": "最近与收藏",
+    "folders": "文件夹",
+    "changeRoot": "更改根目录",
+    "pickRoot": "选择根文件夹",
+    "pc": "此电脑",
+    "menu": "目录树选项",
+    "showHidden": "显示隐藏文件夹",
+    "refresh": "刷新",
+    "label": "文件夹目录树",
+    "loading": "加载中…",
+    "noRecents": "最近使用和收藏的文件夹将显示在这里。",
+    "favAdd": "添加到收藏",
+    "favRemove": "从收藏中移除",
+    "openExplorer": "在资源管理器中打开",
+    "select": "选择此文件夹"
+  },
+  "info": {
+    "none": "请选择文件夹",
+    "noneSub": "在目录树中选择项目，或按 Ctrl+K 搜索。",
+    "last": "上次会话：{when} · 共 {n} 次",
+    "noSessions": "暂无 Claude 会话",
+    "claudeMd": "CLAUDE.md ✓",
+    "noClaudeMd": "无 CLAUDE.md",
+    "skills": "{n} 个技能",
+    "missing": "文件夹不存在",
+    "continue": "继续上次",
+    "resume": "恢复…",
+    "resumeTitle": "以前的会话",
+    "resumeEmpty": "没有已保存的会话",
+    "untitled": "（无标题）",
+    "branch": "Git 分支",
+    "favorite": "收藏",
+    "lastOne": "上次会话：{when} · 共 1 次"
+  },
+  "opts": {
+    "tabFlags": "参数",
+    "tabEnv": "环境变量",
+    "target": "打开方式",
+    "profile": "配置方案",
+    "custom": "自定义",
+    "modified": "已修改",
+    "saveProfile": "另存为方案…",
+    "profileName": "方案名称",
+    "profileSaved": "方案“{name}”已保存",
+    "filter": "筛选…",
+    "noMatch": "没有匹配的项目",
+    "pin": "固定：下次打开时保留",
+    "active": "本次会话启用",
+    "dangerous": "危险选项",
+    "secretSaved": "已保存 ••••",
+    "secretPlaceholder": "粘贴密钥…",
+    "secretDelete": "删除已保存的密钥",
+    "none": "—",
+    "list": "选项"
+  },
+  "target": {
+    "wt": "Windows Terminal · PowerShell",
+    "powershell": "PowerShell",
+    "wsl": "Windows Terminal · WSL"
+  },
+  "group": {
+    "model": "模型与会话",
+    "perm": "权限",
+    "ctx": "上下文与工具",
+    "dbg": "调试",
+    "other": "其他"
+  },
+  "foot": {
+    "copy": "复制",
+    "vscode": "VS Code",
+    "start": "启动",
+    "noPath": "选择文件夹以查看命令",
+    "preview": "命令预览"
+  },
+  "toast": {
+    "launched": "已在 {path} 中启动 Claude",
+    "copied": "命令已复制",
+    "secretSaved": "密钥已保存到凭据管理器"
+  },
+  "palette": {
+    "label": "搜索文件夹",
+    "placeholder": "搜索文件夹或项目…",
+    "empty": "无结果",
+    "hint": "↑↓ 移动 · Enter 选择 · Esc 关闭",
+    "fav": "收藏",
+    "recent": "最近"
   }
 }

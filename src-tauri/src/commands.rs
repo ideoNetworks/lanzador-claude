@@ -264,6 +264,71 @@ pub async fn create_project(req: project::NewProjectRequest) -> AppResult<projec
     blocking(move || project::create(&req, &exe)).await?
 }
 
+/// Raw `cmd.exe` command line for `code "<path>"`. With `/S`, cmd strips the outer quotes and
+/// keeps the inner quoted path literal, so `&`, `;` and spaces in the path stay inert.
+pub fn vscode_cmdline(path: &str) -> String {
+    format!(r#"/D /S /C "code "{}"""#, path.replace('"', ""))
+}
+
+/// Raw argument for `explorer.exe`: quoted path without trailing separators (a `\"` would
+/// escape the quote); bare drive roots like `C:\` are passed as they are.
+pub fn explorer_arg(path: &str) -> String {
+    let clean = path.replace('"', "");
+    let trimmed = clean.trim_end_matches(['\\', '/']);
+    if trimmed.len() <= 2 && trimmed.ends_with(':') {
+        return format!("{trimmed}\\");
+    }
+    format!("\"{trimmed}\"")
+}
+
+fn require_dir(path: &str) -> AppResult<()> {
+    if std::path::Path::new(path).is_dir() {
+        Ok(())
+    } else {
+        Err(AppError::new("path_not_found", path.to_string()))
+    }
+}
+
+/// Opens VS Code on `path` through `cmd /C code` (the `code` shim is a batch file), no console window.
+#[tauri::command]
+pub async fn open_vscode(path: String) -> AppResult<()> {
+    require_dir(&path)?;
+    blocking(move || {
+        let mut cmd = std::process::Command::new("cmd");
+        cmd.stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.raw_arg(vscode_cmdline(&path)).creation_flags(CREATE_NO_WINDOW);
+        }
+        #[cfg(not(windows))]
+        cmd.args(["-c", "code \"$0\"", &path]);
+        match cmd.status() {
+            Ok(s) if s.success() => Ok(()),
+            Ok(s) => Err(AppError::new("vscode_not_found", format!("code exited with {s}"))),
+            Err(e) => Err(AppError::new("vscode_not_found", e.to_string())),
+        }
+    })
+    .await?
+}
+
+/// Opens `path` in Windows Explorer (explorer.exe always exits with 1, so only spawn errors count).
+#[tauri::command]
+pub fn open_explorer(path: String) -> AppResult<()> {
+    require_dir(&path)?;
+    let mut cmd = std::process::Command::new("explorer.exe");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.raw_arg(explorer_arg(&path));
+    }
+    #[cfg(not(windows))]
+    cmd.arg(&path);
+    cmd.spawn().map(|_| ()).map_err(|e| AppError::new("launch_failed", e.to_string()))
+}
+
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
@@ -287,5 +352,23 @@ mod tests {
     fn runner_missing_program_is_none() {
         let r = run_capture("definitely-not-a-program-xyz", &[], Instant::now() + Duration::from_secs(1));
         assert!(r.is_none());
+    }
+}
+
+#[cfg(test)]
+mod open_tests {
+    use super::*;
+
+    #[test]
+    fn vscode_cmdline_quotes_path_for_cmd() {
+        assert_eq!(vscode_cmdline(r"C:\Proyectos\José's app; v2"), r#"/D /S /C "code "C:\Proyectos\José's app; v2"""#);
+        assert_eq!(vscode_cmdline(r"C:\a&b"), r#"/D /S /C "code "C:\a&b"""#);
+    }
+
+    #[test]
+    fn explorer_arg_quotes_and_trims_trailing_separator() {
+        assert_eq!(explorer_arg(r"C:\Proyectos\José's app; v2"), r#""C:\Proyectos\José's app; v2""#);
+        assert_eq!(explorer_arg(r"C:\Desarrollo\x\"), r#""C:\Desarrollo\x""#);
+        assert_eq!(explorer_arg(r"C:\"), r"C:\");
     }
 }

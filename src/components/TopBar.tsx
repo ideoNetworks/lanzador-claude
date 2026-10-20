@@ -16,6 +16,7 @@ export default function TopBar() {
   const t = useT();
   const config = useStore((s) => s.config);
   const saveConfig = useStore((s) => s.saveConfig);
+  const setPaletteOpen = useStore((s) => s.setPaletteOpen);
   const logoPath = config?.branding.logoPath;
   const lang = getLanguage();
 
@@ -25,11 +26,11 @@ export default function TopBar() {
         <img src={logoPath ? convertFileSrc(logoPath) : logoWhite} alt={t("top.logoAlt")} />
         <span>{t("app.name")}</span>
       </div>
-      <div className="search">
+      <button className="search" onClick={() => setPaletteOpen(true)} aria-label={t("top.search")}>
         {icons.search}
         <span>{t("top.search")}</span>
         <kbd>Ctrl K</kbd>
-      </div>
+      </button>
       <select
         className="tbtn"
         aria-label={t("top.language")}

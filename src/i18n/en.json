@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Claude Launcher" },
+  "app": {
+    "name": "Claude Launcher"
+  },
   "top": {
     "search": "Search folder or project…",
     "language": "Language",
@@ -53,6 +55,95 @@
     "repo_url_empty": "The skills repository URL is missing.",
     "git_failed": "Git failed. Check the repository URL and your connection.",
     "invalid_name": "The name is not valid.",
-    "already_exists": "An item with that name already exists."
+    "already_exists": "An item with that name already exists.",
+    "vscode_not_found": "VS Code (the code command) was not found. Install it or add it to the PATH."
+  },
+  "tree": {
+    "recent": "Recent and favourites",
+    "folders": "Folders",
+    "changeRoot": "Change root",
+    "pickRoot": "Choose the root folder",
+    "pc": "This PC",
+    "menu": "Tree options",
+    "showHidden": "Show hidden folders",
+    "refresh": "Refresh",
+    "label": "Folder tree",
+    "loading": "Loading…",
+    "noRecents": "Your recent and favourite folders will appear here.",
+    "favAdd": "Add to favourites",
+    "favRemove": "Remove from favourites",
+    "openExplorer": "Open in Explorer",
+    "select": "Choose this folder"
+  },
+  "info": {
+    "none": "Choose a folder",
+    "noneSub": "Select a project in the tree or press Ctrl+K to search for it.",
+    "last": "Last session: {when} · {n} sessions",
+    "noSessions": "No previous Claude sessions",
+    "claudeMd": "CLAUDE.md ✓",
+    "noClaudeMd": "No CLAUDE.md",
+    "skills": "{n} skills",
+    "missing": "The folder does not exist",
+    "continue": "Continue last",
+    "resume": "Resume…",
+    "resumeTitle": "Previous sessions",
+    "resumeEmpty": "No saved sessions",
+    "untitled": "(untitled)",
+    "branch": "Git branch",
+    "favorite": "Favourite",
+    "lastOne": "Last session: {when} · 1 session"
+  },
+  "opts": {
+    "tabFlags": "Flags",
+    "tabEnv": "Environment variables",
+    "target": "Open in",
+    "profile": "Profile",
+    "custom": "Custom",
+    "modified": "modified",
+    "saveProfile": "Save as profile…",
+    "profileName": "Profile name",
+    "profileSaved": "Profile “{name}” saved",
+    "filter": "Filter…",
+    "noMatch": "Nothing matches the filter",
+    "pin": "Pin: remembered next time",
+    "active": "Enable for this session",
+    "dangerous": "Dangerous option",
+    "secretSaved": "saved ••••",
+    "secretPlaceholder": "Paste the key…",
+    "secretDelete": "Delete the saved key",
+    "none": "—",
+    "list": "Options"
+  },
+  "target": {
+    "wt": "Windows Terminal · PowerShell",
+    "powershell": "PowerShell",
+    "wsl": "Windows Terminal · WSL"
+  },
+  "group": {
+    "model": "Model and session",
+    "perm": "Permissions",
+    "ctx": "Context and tools",
+    "dbg": "Debugging",
+    "other": "Other"
+  },
+  "foot": {
+    "copy": "Copy",
+    "vscode": "VS Code",
+    "start": "Launch",
+    "noPath": "Choose a folder to see the command",
+    "preview": "Command preview"
+  },
+  "toast": {
+    "launched": "Claude launched in {path}",
+    "copied": "Command copied",
+    "secretSaved": "Key saved in Credential Manager"
+  },
+  "palette": {
+    "label": "Search folders",
+    "placeholder": "Search folder or project…",
+    "empty": "No results",
+    "hint": "↑↓ move · Enter choose · Esc close",
+    "fav": "Favourite",
+    "recent": "Recent"
   }
 }

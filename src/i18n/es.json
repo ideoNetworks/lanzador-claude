@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Lanzador Claude" },
+  "app": {
+    "name": "Lanzador Claude"
+  },
   "top": {
     "search": "Buscar carpeta o proyecto…",
     "language": "Idioma",
@@ -53,6 +55,95 @@
     "repo_url_empty": "Falta la URL del repositorio de skills.",
     "git_failed": "Git ha fallado. Revisa la URL del repositorio y tu conexión.",
     "invalid_name": "El nombre no es válido.",
-    "already_exists": "Ya existe un elemento con ese nombre."
+    "already_exists": "Ya existe un elemento con ese nombre.",
+    "vscode_not_found": "No se encuentra VS Code (comando code). Instálalo o añádelo al PATH."
+  },
+  "tree": {
+    "recent": "Recientes y favoritos",
+    "folders": "Carpetas",
+    "changeRoot": "Cambiar raíz",
+    "pickRoot": "Elige la carpeta raíz",
+    "pc": "Este equipo",
+    "menu": "Opciones del árbol",
+    "showHidden": "Mostrar carpetas ocultas",
+    "refresh": "Actualizar",
+    "label": "Árbol de carpetas",
+    "loading": "Cargando…",
+    "noRecents": "Aquí aparecerán tus carpetas recientes y favoritas.",
+    "favAdd": "Añadir a favoritos",
+    "favRemove": "Quitar de favoritos",
+    "openExplorer": "Abrir en el Explorador",
+    "select": "Elegir esta carpeta"
+  },
+  "info": {
+    "none": "Elige una carpeta",
+    "noneSub": "Selecciona un proyecto en el árbol o pulsa Ctrl+K para buscarlo.",
+    "last": "Última sesión: {when} · {n} sesiones",
+    "noSessions": "Sin sesiones previas de Claude",
+    "claudeMd": "CLAUDE.md ✓",
+    "noClaudeMd": "Sin CLAUDE.md",
+    "skills": "{n} skills",
+    "missing": "La carpeta no existe",
+    "continue": "Continuar última",
+    "resume": "Reanudar…",
+    "resumeTitle": "Sesiones anteriores",
+    "resumeEmpty": "No hay sesiones guardadas",
+    "untitled": "(sin título)",
+    "branch": "Rama git",
+    "favorite": "Favorito",
+    "lastOne": "Última sesión: {when} · 1 sesión"
+  },
+  "opts": {
+    "tabFlags": "Parámetros",
+    "tabEnv": "Variables de entorno",
+    "target": "Abrir en",
+    "profile": "Perfil",
+    "custom": "Personalizado",
+    "modified": "modificado",
+    "saveProfile": "Guardar como perfil…",
+    "profileName": "Nombre del perfil",
+    "profileSaved": "Perfil «{name}» guardado",
+    "filter": "Filtrar…",
+    "noMatch": "Ningún elemento coincide con el filtro",
+    "pin": "Fijar: se recuerda al volver a abrir",
+    "active": "Activar en esta sesión",
+    "dangerous": "Opción peligrosa",
+    "secretSaved": "guardado ••••",
+    "secretPlaceholder": "Pega la clave…",
+    "secretDelete": "Borrar la clave guardada",
+    "none": "—",
+    "list": "Opciones"
+  },
+  "target": {
+    "wt": "Windows Terminal · PowerShell",
+    "powershell": "PowerShell",
+    "wsl": "Windows Terminal · WSL"
+  },
+  "group": {
+    "model": "Modelo y sesión",
+    "perm": "Permisos",
+    "ctx": "Contexto y herramientas",
+    "dbg": "Depuración",
+    "other": "Otros"
+  },
+  "foot": {
+    "copy": "Copiar",
+    "vscode": "VS Code",
+    "start": "Iniciar",
+    "noPath": "Elige una carpeta para ver el comando",
+    "preview": "Vista previa del comando"
+  },
+  "toast": {
+    "launched": "Claude iniciado en {path}",
+    "copied": "Comando copiado",
+    "secretSaved": "Clave guardada en el Administrador de credenciales"
+  },
+  "palette": {
+    "label": "Buscar carpetas",
+    "placeholder": "Buscar carpeta o proyecto…",
+    "empty": "Sin resultados",
+    "hint": "↑↓ moverse · Intro elegir · Esc cerrar",
+    "fav": "Favorito",
+    "recent": "Reciente"
   }
 }

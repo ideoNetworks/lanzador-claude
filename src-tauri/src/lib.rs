@@ -47,7 +47,9 @@ pub fn run() {
             commands::templates_list,
             commands::skills_installed,
             commands::skills_install,
-            commands::create_project
+            commands::create_project,
+            commands::open_vscode,
+            commands::open_explorer
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
