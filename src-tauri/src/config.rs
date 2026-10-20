@@ -14,17 +14,19 @@ const MAX_HISTORY: usize = 200;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Target {
-    #[default]
-    Wt,
     Powershell,
     Wsl,
+    /// Default; also the fallback for unknown values.
+    #[default]
+    #[serde(other)]
+    Wt,
 }
 
 /// Active option id -> value (`None` for valueless).
 pub type Selection = BTreeMap<String, Option<String>>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 pub struct Profile {
     pub id: String,
     pub name: String,
@@ -33,8 +35,8 @@ pub struct Profile {
     pub target: Target,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
 pub struct HistoryEntry {
     pub at: String,
     pub path: String,
@@ -143,21 +145,62 @@ impl Default for AppConfig {
     }
 }
 
-/// Load from `dir`. Missing file -> defaults; corrupt file -> renamed to `config.json.bak` and defaults.
-pub fn load_from(dir: &Path) -> AppConfig {
+/// What `load_outcome_from` found on disk.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoadOutcome {
+    /// Parsed fine.
+    Ok,
+    /// No file yet.
+    Missing,
+    /// Unparseable file was moved to `config.json.bak`; defaults returned.
+    Recovered,
+    /// File exists but could not be read (lock, permissions...); defaults returned, file untouched.
+    ReadError,
+}
+
+/// Load from `dir`. Back up to `config.json.bak` only on a parse error.
+pub fn load_outcome_from(dir: &Path) -> (AppConfig, LoadOutcome) {
     let file = dir.join(FILE);
     if !file.exists() {
-        return AppConfig::default();
+        return (AppConfig::default(), LoadOutcome::Missing);
     }
-    match std::fs::read_to_string(&file).ok().and_then(|t| serde_json::from_str::<AppConfig>(&t).ok()) {
-        Some(c) => c,
-        None => {
+    let text = match std::fs::read_to_string(&file) {
+        Ok(t) => t,
+        Err(e) => {
+            eprintln!("config: cannot read {}: {e}", file.display());
+            return (AppConfig::default(), LoadOutcome::ReadError);
+        }
+    };
+    match serde_json::from_str::<AppConfig>(&text) {
+        Ok(c) => (c, LoadOutcome::Ok),
+        Err(e) => {
+            eprintln!("config: corrupt {}: {e}", file.display());
             let bak = dir.join(format!("{FILE}.bak"));
             let _ = std::fs::remove_file(&bak);
-            let _ = std::fs::rename(&file, &bak);
-            AppConfig::default()
+            if let Err(e) = std::fs::rename(&file, &bak) {
+                eprintln!("config: backup to {} failed: {e}", bak.display());
+            }
+            (AppConfig::default(), LoadOutcome::Recovered)
         }
     }
+}
+
+pub fn load_from(dir: &Path) -> AppConfig {
+    load_outcome_from(dir).0
+}
+
+/// Load and, on first run (missing/recovered, or `first_run_done` unset), apply `seed`,
+/// mark first run done and persist. A read error returns defaults without touching the file.
+pub fn load_or_init_from(dir: &Path, seed: Option<crate::seed::Seed>) -> AppResult<AppConfig> {
+    let (mut cfg, outcome) = load_outcome_from(dir);
+    if outcome != LoadOutcome::ReadError && !cfg.first_run_done {
+        if let Some(s) = seed {
+            crate::seed::apply(&mut cfg, s);
+        }
+        cfg.first_run_done = true;
+        save_to(dir, &cfg)?;
+    }
+    Ok(cfg)
 }
 
 /// Atomic save: write `config.json.tmp`, then rename over `config.json`.
@@ -168,10 +211,6 @@ pub fn save_to(dir: &Path, config: &AppConfig) -> AppResult<()> {
     std::fs::write(&tmp, json)?;
     std::fs::rename(&tmp, dir.join(FILE))?;
     Ok(())
-}
-
-pub fn exists() -> bool {
-    paths::config_dir().join(FILE).exists()
 }
 
 pub fn load() -> AppConfig {
@@ -221,6 +260,56 @@ mod tests {
         assert_eq!(c, AppConfig::default());
         assert!(d.path().join("config.json.bak").exists());
         assert!(!d.path().join("config.json").exists());
+    }
+
+    #[test]
+    fn partial_nested_entries_default() {
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(
+            d.path().join("config.json"),
+            r#"{"defaultTarget":"bogus","favorites":["a"],"profiles":[{"id":"x","name":"X","target":"zzz"}],"history":[{"path":"/p"}]}"#,
+        )
+        .unwrap();
+        let (c, outcome) = load_outcome_from(d.path());
+        assert_eq!(outcome, LoadOutcome::Ok);
+        assert!(!d.path().join("config.json.bak").exists());
+        assert_eq!(c.default_target, Target::Wt);
+        assert_eq!(c.favorites, ["a"]);
+        assert_eq!(c.profiles.len(), 1);
+        assert_eq!(c.profiles[0].id, "x");
+        assert_eq!(c.profiles[0].target, Target::Wt);
+        assert_eq!(c.history.len(), 1);
+        assert_eq!(c.history[0].path, "/p");
+    }
+
+    #[test]
+    fn read_error_does_not_back_up() {
+        let d = tempfile::tempdir().unwrap();
+        std::fs::create_dir(d.path().join("config.json")).unwrap();
+        let (c, outcome) = load_outcome_from(d.path());
+        assert_eq!(outcome, LoadOutcome::ReadError);
+        assert_eq!(c, AppConfig::default());
+        assert!(d.path().join("config.json").is_dir());
+        assert!(!d.path().join("config.json.bak").exists());
+        // and first-run init must not try to overwrite it
+        let _ = load_or_init_from(d.path(), None);
+        assert!(d.path().join("config.json").is_dir());
+    }
+
+    #[test]
+    fn first_run_applies_seed_after_recovery_and_persists() {
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(d.path().join("config.json"), "{not json").unwrap();
+        let seed = crate::seed::Seed { autostart: true, profile: Some("safe".into()), pinned: vec![] };
+        let c = load_or_init_from(d.path(), Some(seed)).unwrap();
+        assert!(c.first_run_done && c.autostart);
+        assert!(d.path().join("config.json.bak").exists());
+        // persisted: second load is Ok and no re-seed
+        let (c2, outcome) = load_outcome_from(d.path());
+        assert_eq!(outcome, LoadOutcome::Ok);
+        assert_eq!(c2, c);
+        let again = load_or_init_from(d.path(), Some(crate::seed::Seed::default())).unwrap();
+        assert!(again.autostart);
     }
 
     #[test]

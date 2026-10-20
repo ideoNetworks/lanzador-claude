@@ -17,19 +17,10 @@ pub fn ping() -> Pong {
     Pong { ok: true, version: env!("CARGO_PKG_VERSION").to_string() }
 }
 
-/// First run (no config file): apply installer seed, mark first run done, save.
+/// First run (missing/recovered config): apply installer seed, mark first run done, save.
 #[tauri::command]
 pub fn get_config() -> AppResult<AppConfig> {
-    let first_run = !config::exists();
-    let mut cfg = config::load();
-    if first_run {
-        if let Some(s) = seed::read_seed() {
-            seed::apply(&mut cfg, s);
-        }
-        cfg.first_run_done = true;
-        config::save(&cfg)?;
-    }
-    Ok(cfg)
+    config::load_or_init_from(&crate::paths::config_dir(), seed::read_seed())
 }
 
 #[tauri::command]
