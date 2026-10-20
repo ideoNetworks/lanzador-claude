@@ -5,7 +5,7 @@ use crate::command::{self, LaunchPlan, LaunchRequest};
 use crate::config::{self, AppConfig, HistoryEntry};
 use crate::error::{AppError, AppResult};
 use crate::catalog::{self, CatalogItem};
-use crate::{help_parser, launch, locale, seed};
+use crate::{folderinfo, fstree, help_parser, launch, locale, seed, sessions};
 
 #[derive(Serialize)]
 pub struct Pong {
@@ -162,6 +162,32 @@ pub fn launch(req: LaunchRequest) -> AppResult<HistoryEntry> {
     config::push_history(&mut cfg, entry.clone());
     config::save(&cfg)?;
     Ok(entry)
+}
+
+// Filesystem commands run on the blocking pool so a slow or disconnected network drive
+// never stalls the UI thread.
+async fn blocking<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> AppResult<T> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| AppError::new("io", e.to_string()))
+}
+
+#[tauri::command]
+pub async fn list_dir(path: String, show_hidden: bool) -> AppResult<Vec<fstree::DirEntry>> {
+    blocking(move || fstree::list_dir(&path, show_hidden)).await?
+}
+
+#[tauri::command]
+pub async fn list_roots() -> AppResult<Vec<fstree::DriveEntry>> {
+    blocking(fstree::list_roots).await
+}
+
+#[tauri::command]
+pub async fn folder_info(path: String) -> AppResult<folderinfo::FolderInfo> {
+    blocking(move || folderinfo::info(&path)).await
+}
+
+#[tauri::command]
+pub async fn list_sessions(path: String) -> AppResult<Vec<sessions::SessionSummary>> {
+    blocking(move || sessions::list(&path)).await
 }
 
 #[cfg(all(test, windows))]

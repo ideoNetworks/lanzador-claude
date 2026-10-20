@@ -3,11 +3,14 @@ pub mod commands;
 pub mod catalog;
 pub mod config;
 pub mod error;
+pub mod folderinfo;
+pub mod fstree;
 pub mod help_parser;
 pub mod launch;
 pub mod locale;
 pub mod paths;
 pub mod seed;
+pub mod sessions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,7 +26,11 @@ pub fn run() {
             commands::import_config,
             commands::get_catalog,
             commands::build_command,
-            commands::launch
+            commands::launch,
+            commands::list_dir,
+            commands::list_roots,
+            commands::folder_info,
+            commands::list_sessions
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
