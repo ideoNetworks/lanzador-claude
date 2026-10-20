@@ -5,7 +5,7 @@ use crate::command::{self, LaunchPlan, LaunchRequest};
 use crate::config::{self, AppConfig, HistoryEntry};
 use crate::error::{AppError, AppResult};
 use crate::catalog::{self, CatalogItem};
-use crate::{folderinfo, fstree, help_parser, launch, locale, seed, sessions};
+use crate::{folderinfo, fstree, help_parser, launch, locale, secrets, seed, sessions};
 
 #[derive(Serialize)]
 pub struct Pong {
@@ -148,19 +148,24 @@ impl CatalogCache {
 }
 
 /// Resolves the plan for `req` against the cached (merged) catalog, else the embedded one.
-fn make_plan(cache: &CatalogCache, req: &LaunchRequest) -> AppResult<LaunchPlan> {
-    // T6: secrets::get
-    command::plan(req, &cache.items(), &|_| None, command::detect_pwsh())
+/// Previews never read secret values: a placeholder stands in for stored ones (always rendered masked).
+fn make_plan(cache: &CatalogCache, req: &LaunchRequest, reveal: bool) -> AppResult<LaunchPlan> {
+    let items = cache.items();
+    if reveal {
+        command::plan(req, &items, &|k| secrets::get(k), command::detect_pwsh())
+    } else {
+        command::plan(req, &items, &|k| secrets::has(k).then(String::new), command::detect_pwsh())
+    }
 }
 
 #[tauri::command]
 pub fn build_command(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<String> {
-    Ok(make_plan(&cache, &req)?.preview)
+    Ok(make_plan(&cache, &req, false)?.preview)
 }
 
 #[tauri::command]
 pub fn launch(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<HistoryEntry> {
-    let plan = make_plan(&cache, &req)?;
+    let plan = make_plan(&cache, &req, true)?;
     launch::run(&plan)?;
     let mut cfg = config::load();
     let entry = HistoryEntry {
@@ -201,6 +206,21 @@ pub async fn folder_info(path: String) -> AppResult<folderinfo::FolderInfo> {
 #[tauri::command]
 pub async fn list_sessions(path: String) -> AppResult<Vec<sessions::SessionSummary>> {
     blocking(move || sessions::list(&path)).await
+}
+
+#[tauri::command]
+pub fn secret_set(key: String, value: String) -> AppResult<()> {
+    secrets::set(&key, &value)
+}
+
+#[tauri::command]
+pub fn secret_has(key: String) -> bool {
+    secrets::has(&key)
+}
+
+#[tauri::command]
+pub fn secret_delete(key: String) -> AppResult<()> {
+    secrets::delete(&key)
 }
 
 #[cfg(all(test, windows))]

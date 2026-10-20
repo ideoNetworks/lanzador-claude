@@ -9,6 +9,7 @@ pub mod help_parser;
 pub mod launch;
 pub mod locale;
 pub mod paths;
+pub mod secrets;
 pub mod seed;
 pub mod sessions;
 
@@ -35,7 +36,10 @@ pub fn run() {
             commands::list_dir,
             commands::list_roots,
             commands::folder_info,
-            commands::list_sessions
+            commands::list_sessions,
+            commands::secret_set,
+            commands::secret_has,
+            commands::secret_delete
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
