@@ -1,5 +1,5 @@
 //! Skills repository: sync with `git`, list skills/templates, install into projects.
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -46,35 +46,53 @@ pub fn repo_dir() -> PathBuf {
 
 // ---- git plumbing -------------------------------------------------------------------------
 
-/// Percent-encodes the characters that would break the userinfo part of a URL.
-fn encode_userinfo(token: &str) -> String {
+fn base64(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
-    for c in token.chars() {
-        if c.is_ascii_alphanumeric() || "-._~".contains(c) {
-            out.push(c);
-        } else {
-            let mut buf = [0u8; 4];
-            for b in c.encode_utf8(&mut buf).bytes() {
-                out.push_str(&format!("%{b:02X}"));
+    for chunk in data.chunks(3) {
+        let n = (u32::from(chunk[0]) << 16) | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8) | u32::from(*chunk.get(2).unwrap_or(&0));
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(T[((n >> (18 - 6 * i)) & 63) as usize] as char);
+            } else {
+                out.push('=');
             }
         }
     }
     out
 }
 
-/// `https://host/..` -> `https://<token>@host/..`. Other URLs (local paths, ssh) are untouched.
-pub(crate) fn inject_token(url: &str, token: Option<&str>) -> String {
-    match (token.filter(|t| !t.is_empty()), url.strip_prefix("https://")) {
-        (Some(t), Some(rest)) => format!("https://{}@{rest}", encode_userinfo(t)),
-        _ => url.to_string(),
+fn auth_header_value(token: &str) -> String {
+    format!("Authorization: Basic {}", base64(format!("x-access-token:{token}").as_bytes()))
+}
+
+/// Environment for a git process that must authenticate. The token never goes in argv
+/// (it would leak into the reflog and the process list).
+pub(crate) fn auth_env(token: Option<&str>) -> Vec<(String, String)> {
+    match token.filter(|t| !t.is_empty()) {
+        Some(t) => vec![
+            ("GIT_CONFIG_COUNT".into(), "1".into()),
+            ("GIT_CONFIG_KEY_0".into(), "http.extraHeader".into()),
+            ("GIT_CONFIG_VALUE_0".into(), auth_header_value(t)),
+        ],
+        None => Vec::new(),
     }
 }
 
-/// Removes the token (raw and encoded) from text that may reach the UI or logs.
+pub(crate) fn clone_args(url: &str, dest: &Path) -> Vec<OsString> {
+    vec!["clone".into(), "--depth".into(), "1".into(), url.into(), dest.as_os_str().to_os_string()]
+}
+
+pub(crate) fn pull_args(repo: &Path, url: &str) -> Vec<OsString> {
+    vec!["-C".into(), repo.as_os_str().to_os_string(), "pull".into(), "--ff-only".into(), url.into()]
+}
+
+/// Removes the token (and its header form) from text that may reach the UI or logs.
 pub(crate) fn scrub(text: &str, token: Option<&str>) -> String {
     let mut out = text.to_string();
     if let Some(t) = token.filter(|t| !t.is_empty()) {
-        out = out.replace(&encode_userinfo(t), "••••").replace(t, "••••");
+        let b64 = base64(format!("x-access-token:{t}").as_bytes());
+        out = out.replace(&b64, "••••").replace(t, "••••");
     }
     out
 }
@@ -98,7 +116,15 @@ where
     I: IntoIterator<Item = S>,
     S: AsRef<OsStr>,
 {
-    let out = git_command(program).args(args).output().map_err(|e| {
+    run_git_env(program, args, &[], secret)
+}
+
+pub(crate) fn run_git_env<I, S>(program: &str, args: I, envs: &[(String, String)], secret: Option<&str>) -> AppResult<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    let out = git_command(program).args(args).envs(envs.iter().map(|(k, v)| (k, v))).output().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             AppError::new("git_missing", "git was not found on PATH")
         } else {
@@ -124,29 +150,29 @@ pub fn sync_in(repo: &Path, url: &str, token: Option<&str>, git: &str) -> AppRes
     if url.is_empty() {
         return Err(AppError::new("repo_url_empty", "no skills repository URL configured"));
     }
-    let authed = inject_token(url, token);
+    let envs = auth_env(token);
     if repo.join(".git").exists() {
         // A changed URL means a different repository: re-clone instead of pulling into the old one.
         let remote = run_git(git, [OsStr::new("-C"), repo.as_os_str(), OsStr::new("remote"), OsStr::new("get-url"), OsStr::new("origin")], token)
             .unwrap_or_default();
         if remote == url {
-            run_git(git, [OsStr::new("-C"), repo.as_os_str(), OsStr::new("pull"), OsStr::new("--ff-only"), OsStr::new(&authed)], token)?;
+            run_git_env(git, pull_args(repo, url), &envs, token)?;
             return Ok("updated".into());
         }
     }
-    clone_fresh(repo, url, &authed, token, git)?;
+    clone_fresh(repo, url, &envs, token, git)?;
     Ok("cloned".into())
 }
 
 /// Clones next to the cache dir and swaps it in, so a failure never destroys the existing cache.
-fn clone_fresh(repo: &Path, url: &str, authed: &str, token: Option<&str>, git: &str) -> AppResult<()> {
+fn clone_fresh(repo: &Path, url: &str, envs: &[(String, String)], token: Option<&str>, git: &str) -> AppResult<()> {
     let name = repo.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "skills-repo".into());
     let tmp = repo.with_file_name(format!("{name}.new"));
     let _ = fs::remove_dir_all(&tmp);
     if let Some(parent) = tmp.parent() {
         fs::create_dir_all(parent)?;
     }
-    let result = run_git(git, [OsStr::new("clone"), OsStr::new("--depth"), OsStr::new("1"), OsStr::new(authed), tmp.as_os_str()], token).and_then(|_| {
+    let result = run_git_env(git, clone_args(url, &tmp), envs, token).and_then(|_| {
         run_git(git, [OsStr::new("-C"), tmp.as_os_str(), OsStr::new("remote"), OsStr::new("set-url"), OsStr::new("origin"), OsStr::new(url)], token)
     });
     if let Err(e) = result {
@@ -410,13 +436,59 @@ mod tests {
     }
 
     #[test]
-    fn token_is_injected_and_scrubbed() {
-        assert_eq!(inject_token("https://github.com/a/b.git", Some("tok")), "https://tok@github.com/a/b.git");
-        assert_eq!(inject_token("https://github.com/a/b.git", None), "https://github.com/a/b.git");
-        assert_eq!(inject_token("https://github.com/a/b.git", Some("")), "https://github.com/a/b.git");
-        assert_eq!(inject_token("C:\\repo", Some("tok")), "C:\\repo");
-        assert_eq!(inject_token("https://github.com/a", Some("a@b")), "https://a%40b@github.com/a");
-        assert_eq!(scrub("fatal: https://tok@github.com/a failed", Some("tok")), "fatal: https://••••@github.com/a failed");
+    fn auth_env_builds_header_and_scrub_hides_token() {
+        let e = auth_env(Some("tok"));
+        assert_eq!(e.len(), 3);
+        assert_eq!(e[0], ("GIT_CONFIG_COUNT".to_string(), "1".to_string()));
+        assert_eq!(e[1], ("GIT_CONFIG_KEY_0".to_string(), "http.extraHeader".to_string()));
+        // base64("x-access-token:tok")
+        assert_eq!(e[2].1, "Authorization: Basic eC1hY2Nlc3MtdG9rZW46dG9r");
+        assert!(auth_env(None).is_empty());
+        assert!(auth_env(Some("")).is_empty());
+        assert_eq!(base64(b"a"), "YQ==");
+        assert_eq!(base64(b"ab"), "YWI=");
+        assert_eq!(base64(b"abc"), "YWJj");
+        assert_eq!(scrub("fatal: tok eC1hY2Nlc3MtdG9rZW46dG9r", Some("tok")), "fatal: •••• ••••");
+        let argv: Vec<String> = clone_args("https://h/x.git", Path::new("d"))
+            .into_iter()
+            .chain(pull_args(Path::new("r"), "https://h/x.git"))
+            .map(|a| a.to_string_lossy().to_string())
+            .collect();
+        assert!(argv.iter().all(|a| !a.contains("tok") && !a.contains('@')));
+    }
+
+    fn grep_tree(dir: &Path, needle: &str) -> Vec<String> {
+        let mut hits = Vec::new();
+        for e in fs::read_dir(dir).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                hits.extend(grep_tree(&p, needle));
+            } else if fs::read(&p).map(|b| b.windows(needle.len()).any(|w| w == needle.as_bytes())).unwrap_or(false) {
+                hits.push(p.display().to_string());
+            }
+        }
+        hits
+    }
+
+    #[test]
+    fn pull_never_writes_token() {
+        if !git_available() {
+            return;
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let src = fixture_repo(tmp.path());
+        let dest = tmp.path().join("cache");
+        let url = src.to_string_lossy().to_string();
+        assert_eq!(sync_in(&dest, &url, Some("SECRET123"), "git").unwrap(), "cloned");
+        skill(&src, "gamma", "G", "x");
+        for args in [vec!["add", "."], vec!["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "two"]] {
+            let o = std::process::Command::new("git").arg("-C").arg(&src).args(&args).output().unwrap();
+            assert!(o.status.success());
+        }
+        assert_eq!(sync_in(&dest, &url, Some("SECRET123"), "git").unwrap(), "updated");
+        assert!(dest.join("skills").join("gamma").exists());
+        let hits = grep_tree(&dest.join(".git"), "SECRET123");
+        assert!(hits.is_empty(), "{hits:?}");
     }
 
     #[test]

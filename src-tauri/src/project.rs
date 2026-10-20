@@ -43,7 +43,7 @@ fn validate_name(name: &str) -> AppResult<()> {
         || name == "."
         || name == ".."
         || name.ends_with(['.', ' '])
-        || name.chars().any(|c| c.is_control() || "<>:\"/\\|?*".contains(c))
+        || name.chars().any(|c| c.is_control() || "<>:\"/\\|?*$`".contains(c))
         || RESERVED.iter().any(|r| name.split('.').next().is_some_and(|stem| stem.eq_ignore_ascii_case(r)));
     if bad {
         Err(AppError::new("invalid_name", format!("invalid project name: {name:?}")))
@@ -84,11 +84,28 @@ pub fn merge_hook(existing: Option<Value>, command: &str) -> Value {
 }
 
 fn render(template: &str, req: &NewProjectRequest, name: &str) -> String {
-    template
-        .replace("{{name}}", name)
-        .replace("{{description}}", &req.description)
-        .replace("{{stack}}", &req.stack)
-        .replace("{{date}}", &chrono::Local::now().format("%Y-%m-%d").to_string())
+    let date = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let mut out = String::with_capacity(template.len());
+    let mut rest = template;
+    while let Some(start) = rest.find("{{") {
+        out.push_str(&rest[..start]);
+        let after = &rest[start..];
+        let value = [("{{name}}", name), ("{{description}}", req.description.as_str()), ("{{stack}}", req.stack.as_str()), ("{{date}}", date.as_str())]
+            .into_iter()
+            .find_map(|(k, v)| after.strip_prefix(k).map(|tail| (v, tail)));
+        match value {
+            Some((v, tail)) => {
+                out.push_str(v);
+                rest = tail;
+            }
+            None => {
+                out.push_str("{{");
+                rest = &after[2..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out
 }
 
 fn warn(code: &str, e: &AppError) -> String {
@@ -211,6 +228,17 @@ mod tests {
     }
 
     #[test]
+    fn render_is_single_pass() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut r = req(tmp.path(), "demo");
+        r.description = "see {{name}} and {{stack}}".into();
+        let out = run(&r, tmp.path(), "git", "en").unwrap();
+        let md = fs::read_to_string(Path::new(&out.path).join("CLAUDE.md")).unwrap();
+        assert!(md.contains("> see {{name}} and {{stack}}"), "{md}");
+        assert!(md.contains("Rust"));
+    }
+
+    #[test]
     fn create_uses_repo_template_and_rejects_traversal() {
         let tmp = tempfile::tempdir().unwrap();
         let tdir = tmp.path().join("repo").join("templates").join("claude-md");
@@ -229,7 +257,7 @@ mod tests {
     #[test]
     fn create_rejects_bad_names() {
         let tmp = tempfile::tempdir().unwrap();
-        for bad in ["", "  ", "a/b", "a\\b", "a:b", "a*b", "a?b", "a\"b", "a<b", "a>b", "a|b", ".", "..", "x.", "con", "NUL"] {
+        for bad in ["", "  ", "a/b", "a\\b", "a:b", "a*b", "a?b", "a\"b", "a<b", "a>b", "a|b", ".", "..", "x.", "con", "NUL", "a$b", "a`b", "$(calc)"] {
             let e = run(&req(tmp.path(), bad), tmp.path(), "git", "en").unwrap_err();
             assert_eq!(e.code, "invalid_name", "{bad:?}");
         }
