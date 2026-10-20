@@ -10,7 +10,9 @@ pub mod launch;
 pub mod locale;
 pub mod paths;
 pub mod secrets;
+pub mod project;
 pub mod seed;
+pub mod skills;
 pub mod sessions;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -39,7 +41,13 @@ pub fn run() {
             commands::list_sessions,
             commands::secret_set,
             commands::secret_has,
-            commands::secret_delete
+            commands::secret_delete,
+            commands::skills_sync,
+            commands::skills_list,
+            commands::templates_list,
+            commands::skills_installed,
+            commands::skills_install,
+            commands::create_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

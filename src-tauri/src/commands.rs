@@ -5,7 +5,7 @@ use crate::command::{self, LaunchPlan, LaunchRequest};
 use crate::config::{self, AppConfig, HistoryEntry};
 use crate::error::{AppError, AppResult};
 use crate::catalog::{self, CatalogItem};
-use crate::{folderinfo, fstree, help_parser, launch, locale, secrets, seed, sessions};
+use crate::{folderinfo, fstree, help_parser, launch, locale, project, secrets, seed, sessions, skills};
 
 #[derive(Serialize)]
 pub struct Pong {
@@ -221,6 +221,47 @@ pub fn secret_has(key: String) -> bool {
 #[tauri::command]
 pub fn secret_delete(key: String) -> AppResult<()> {
     secrets::delete(&key)
+}
+
+#[tauri::command]
+pub async fn skills_sync() -> AppResult<String> {
+    let url = config::load().skills_repo_url;
+    let token = secrets::get(skills::TOKEN_KEY);
+    blocking(move || skills::sync(&url, token)).await?
+}
+
+#[tauri::command]
+pub async fn skills_list() -> Vec<skills::SkillInfo> {
+    blocking(skills::list).await.unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn templates_list() -> Vec<skills::TemplateInfo> {
+    blocking(skills::templates).await.unwrap_or_default()
+}
+
+#[tauri::command]
+pub async fn skills_installed(path: String) -> Vec<skills::InstalledSkill> {
+    blocking(move || skills::installed(std::path::Path::new(&path))).await.unwrap_or_default()
+}
+
+/// `path = None` installs globally into `~/.claude/skills`; otherwise into `<path>/.claude/skills`.
+#[tauri::command]
+pub async fn skills_install(path: Option<String>, names: Vec<String>) -> AppResult<()> {
+    blocking(move || {
+        let dest = match path {
+            Some(p) => std::path::PathBuf::from(p).join(".claude").join("skills"),
+            None => crate::paths::claude_home().join("skills"),
+        };
+        skills::install(&names, &dest)
+    })
+    .await?
+}
+
+#[tauri::command]
+pub async fn create_project(req: project::NewProjectRequest) -> AppResult<project::CreateResult> {
+    let exe = std::env::current_exe()?;
+    blocking(move || project::create(&req, &exe)).await?
 }
 
 #[cfg(all(test, windows))]
