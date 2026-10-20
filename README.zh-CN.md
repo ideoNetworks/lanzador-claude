@@ -44,7 +44,7 @@ Lanzador Claude（"Claude 启动器"）是一款 Windows 桌面应用，用作 *
 
 ## 从源代码构建
 
-需要 Node 20 或更高版本、稳定版 Rust，以及包含 C++ 工作负载的 Visual Studio Build Tools。
+需要 Node 22.22 或更高版本（推荐 24）、稳定版 Rust，以及包含 C++ 工作负载的 Visual Studio Build Tools。
 
 ```powershell
 npm ci

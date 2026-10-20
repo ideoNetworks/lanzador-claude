@@ -10,7 +10,7 @@
 
 ## Entorno de desarrollo
 
-Necesitas Node 20+, Rust estable y las Visual Studio Build Tools (C++). Ejecuta `cargo` desde PowerShell, no desde Git Bash.
+Necesitas Node 22.22+ (recomendado 24), Rust estable y las Visual Studio Build Tools (C++). Ejecuta `cargo` desde PowerShell, no desde Git Bash.
 
 ```powershell
 npm ci

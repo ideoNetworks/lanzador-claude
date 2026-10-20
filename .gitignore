@@ -5,3 +5,4 @@ src-tauri/target/
 *.key
 dist-ssr/
 *.local
+graphify-out/

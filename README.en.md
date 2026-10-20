@@ -44,7 +44,7 @@ It uses **Tauri 2**: a **Rust** engine and a web interface (**React + TypeScript
 
 ## Build from source
 
-You need Node 20 or later, stable Rust and the Visual Studio Build Tools with the C++ workload.
+You need Node 22.22 or later (24 recommended), stable Rust and the Visual Studio Build Tools with the C++ workload.
 
 ```powershell
 npm ci

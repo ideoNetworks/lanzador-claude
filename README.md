@@ -44,7 +44,7 @@ Usa **Tauri 2**: un motor en **Rust** y una interfaz web (**React + TypeScript +
 
 ## Compilar desde el código fuente
 
-Necesitas Node 20 o superior, Rust estable y las Visual Studio Build Tools con el componente de C++.
+Necesitas Node 22.22 o superior (recomendado 24), Rust estable y las Visual Studio Build Tools con el componente de C++.
 
 ```powershell
 npm ci
