@@ -5,10 +5,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, [tabindex]:focus-visible, select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .app { display: flex; flex-direction: column; height: 100%; min-height: 0; background: var(--surface); }
-.top { display: flex; align-items: center; gap: 12px; background: var(--primary); color: var(--primary-ink); padding: 8px 12px; }
+.top { display: flex; align-items: center; gap: 12px; background: var(--primary); color: var(--primary-ink); padding: 0 12px; height: 48px; flex: none; }
+.icon { width: 16px; height: 16px; flex: none; }
+.search .icon { width: 14px; height: 14px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px; white-space: nowrap; }
 .brand img { height: 26px; max-width: 120px; object-fit: contain; display: block; }
-.search { flex: 1; min-width: 140px; max-width: 420px; margin: 0 auto; display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .17); border-radius: 6px; padding: 5px 10px; color: rgba(255, 255, 255, .85); }
+.search { flex: 1; min-width: 140px; max-width: 420px; height: 32px; margin: 0 auto; display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .17); border-radius: 6px; padding: 0 10px; color: rgba(255, 255, 255, .85); white-space: nowrap; overflow: hidden; }
 .search kbd { margin-left: auto; font-family: var(--f-mono); font-size: 11px; background: rgba(255, 255, 255, .18); border-radius: 4px; padding: 1px 5px; }
 .tbtn { background: rgba(255, 255, 255, .14); border: 0; border-radius: 6px; padding: 5px 9px; color: #fff; display: flex; align-items: center; gap: 6px; }
 .tbtn:hover { background: rgba(255, 255, 255, .26); }

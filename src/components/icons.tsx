@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-const S = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
+const S = { className: "icon", width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, "aria-hidden": true } as const;
 
 export const icons: Record<string, ReactElement> = {
   launch: <svg {...S} fill="currentColor" stroke="none"><path d="M7 4.5v15l13-7.5z" /></svg>,
