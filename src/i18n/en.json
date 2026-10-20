@@ -56,7 +56,13 @@
     "git_failed": "Git failed. Check the repository URL and your connection.",
     "invalid_name": "The name is not valid.",
     "already_exists": "An item with that name already exists.",
-    "vscode_not_found": "VS Code (the code command) was not found. Install it or add it to the PATH."
+    "vscode_not_found": "VS Code (the code command) was not found. Install it or add it to the PATH.",
+    "shortcut_taken": "That shortcut is already used by another application.",
+    "shortcut_invalid": "The shortcut is not valid.",
+    "autostart_failed": "Could not change start with Windows.",
+    "update_failed": "The update failed. Try again later.",
+    "notify_failed": "The notification could not be shown.",
+    "tray_missing": "The tray icon is not available."
   },
   "tree": {
     "recent": "Recent and favourites",
@@ -145,5 +151,10 @@
     "hint": "↑↓ move · Enter choose · Esc close",
     "fav": "Favourite",
     "recent": "Recent"
+  },
+  "update": {
+    "available": "A new version is available ({version})",
+    "install": "Update",
+    "later": "Later"
   }
 }

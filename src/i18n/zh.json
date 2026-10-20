@@ -56,7 +56,13 @@
     "git_failed": "Git 执行失败。请检查仓库 URL 和网络连接。",
     "invalid_name": "名称无效。",
     "already_exists": "已存在同名项目。",
-    "vscode_not_found": "未找到 VS Code（code 命令）。请安装或将其加入 PATH。"
+    "vscode_not_found": "未找到 VS Code（code 命令）。请安装或将其加入 PATH。",
+    "shortcut_taken": "该快捷键已被其他应用占用。",
+    "shortcut_invalid": "快捷键无效。",
+    "autostart_failed": "无法更改开机启动设置。",
+    "update_failed": "更新失败，请稍后再试。",
+    "notify_failed": "无法显示通知。",
+    "tray_missing": "托盘图标不可用。"
   },
   "tree": {
     "recent": "最近与收藏",
@@ -145,5 +151,10 @@
     "hint": "↑↓ 移动 · Enter 选择 · Esc 关闭",
     "fav": "收藏",
     "recent": "最近"
+  },
+  "update": {
+    "available": "有新版本可用（{version}）",
+    "install": "更新",
+    "later": "稍后"
   }
 }

@@ -46,3 +46,7 @@ select.tbtn option { color: #1b2533; }
 .toast { position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%); background: var(--tip-bg); color: var(--tip-fg); padding: 9px 16px; border-radius: 7px; box-shadow: var(--shadow); font-size: 13px; z-index: 50; max-width: 80vw; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.update-banner { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--primary); color: #fff; font-size: 13px; }
+.update-banner span { flex: 1; }
+.update-banner button { background: rgba(255,255,255,.18); color: #fff; border: 1px solid rgba(255,255,255,.5); border-radius: 6px; padding: 4px 12px; cursor: pointer; font: inherit; }
+.update-banner button:hover { background: rgba(255,255,255,.3); }

@@ -75,3 +75,5 @@ export const refreshTray = () => invoke<void>("refresh_tray");
 export const notify = (title: string, body: string) => invoke<void>("notify", { title, body });
 
 export { errorText } from "./i18n/errors";
+export const takePendingOpen = () => invoke<string | null>("take_pending_open");
+export const updateInstall = () => invoke<void>("update_install");

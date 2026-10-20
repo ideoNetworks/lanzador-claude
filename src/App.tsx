@@ -7,6 +7,8 @@ import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
 import Placeholder from "./views/Placeholder";
 import LaunchView from "./views/LaunchView";
+import UpdateBanner from "./components/UpdateBanner";
+import { useAppEvents } from "./integration/useAppEvents";
 import SearchPalette from "./components/SearchPalette";
 
 export default function App() {
@@ -17,6 +19,7 @@ export default function App() {
   const primary = useStore((s) => s.config?.branding.primaryColor);
 
   useEffect(() => void load(), [load]);
+  useAppEvents();
 
   // No native WebView context menu (Reload / Inspect), except in text fields where it offers copy/paste.
   useEffect(() => {
@@ -45,8 +48,9 @@ export default function App() {
   return (
     <div className="app">
       <TopBar />
+      <UpdateBanner />
       <div className="body">
-        <NavRail onAbout={() => { /* About dialog arrives in Task 10 */ }} />
+        <NavRail onAbout={() => useStore.getState().setAboutOpen(true)} />
         <main className="main">
           {/* Remaining views are filled in by Tasks 10-11. */}
           {view === "launch" ? <LaunchView /> : <Placeholder title={t(`nav.${view}`)} />}

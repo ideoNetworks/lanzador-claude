@@ -20,7 +20,12 @@ interface State {
   /** Remembered values of options that are currently off (session only). */
   drafts: Selection;
   paletteOpen: boolean;
+  /** About dialog open flag (the dialog itself is rendered by Task 10). */
+  aboutOpen: boolean;
   launching: boolean;
+  /** Pending update announced by the engine (`update-available`). */
+  update: { version: string; notes: string | null } | null;
+  setUpdate: (u: { version: string; notes: string | null } | null) => void;
   load: () => Promise<void>;
   saveConfig: (patch: Partial<AppConfig>) => Promise<void>;
   selectPath: (p: string | null) => void;
@@ -31,6 +36,7 @@ interface State {
   setDraft: (id: string, value: string | null) => void;
   setTarget: (t: Target) => void;
   setPaletteOpen: (open: boolean) => void;
+  setAboutOpen: (open: boolean) => void;
   toggleFavorite: (path: string) => void;
   /** Launches the selected folder with the active options (plus extra ones / a session to resume). */
   launchNow: (opts?: { extra?: Selection; resumeId?: string | null }) => Promise<void>;
@@ -53,7 +59,10 @@ export const useStore = create<State>((set, get) => ({
   target: "wt",
   drafts: {},
   paletteOpen: false,
+  aboutOpen: false,
   launching: false,
+  update: null,
+  setUpdate: (update) => set({ update }),
 
   async load() {
     try {
@@ -98,6 +107,7 @@ export const useStore = create<State>((set, get) => ({
   setDraft: (id, value) => set((s) => ({ drafts: { ...s.drafts, [id]: value } })),
   setTarget: (target) => set({ target }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setAboutOpen: (aboutOpen) => set({ aboutOpen }),
   toggleFavorite(path) {
     const favs = get().config?.favorites ?? [];
     const has = favs.some((f) => f.toLowerCase() === path.toLowerCase());

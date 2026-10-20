@@ -17,7 +17,8 @@
         "height": 800,
         "minWidth": 960,
         "minHeight": 640,
-        "decorations": true
+        "decorations": true,
+        "visible": false
       }
     ],
     "security": {
@@ -35,5 +36,16 @@
       "icons/icon.ico"
     ]
   },
-  "mainBinaryName": "lanzador-claude"
+  "mainBinaryName": "lanzador-claude",
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEMxNDBFMkExQ0MwMUM5NzcKUldSM3lRSE1vZUpBd2VrK2Q3Y0w3aTZscFBFcUxid0lRamNFUjJUWDJuMG1oK0V6NjRJNDJ0N3QK",
+      "endpoints": [
+        "https://github.com/ideonetworks/lanzador-claude/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
 }

@@ -52,12 +52,20 @@ pub fn sweep_stale(dir: &Path) {
 
 /// Writes the script (if any) and spawns the program detached, without waiting for it.
 /// If the spawn fails the script is removed again.
+/// Variables of a parent Claude Code session that must not leak into a fresh one.
+pub fn stripped_env_vars() -> &'static [&'static str] {
+    &["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT"]
+}
+
 pub fn run(plan: &LaunchPlan) -> AppResult<()> {
     if let (Some(content), Some(path)) = (&plan.script, &plan.script_path) {
         write_script(Path::new(path), content)?;
     }
     let mut cmd = std::process::Command::new(&plan.program);
     cmd.args(&plan.args);
+    for var in stripped_env_vars() {
+        cmd.env_remove(var);
+    }
     if plan.program == "wt.exe" {
         // wt.exe opens its own window and receives the folder through `-d`.
         cmd.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
@@ -98,6 +106,11 @@ mod tests {
             script_path: Some(script_path.to_string_lossy().into_owned()),
             cwd: script_path.parent().unwrap().to_string_lossy().into_owned(),
         }
+    }
+
+    #[test]
+    fn stripped_env_vars_listed() {
+        assert_eq!(stripped_env_vars(), ["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT"]);
     }
 
     #[test]

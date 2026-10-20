@@ -56,7 +56,13 @@
     "git_failed": "Git ha fallado. Revisa la URL del repositorio y tu conexión.",
     "invalid_name": "El nombre no es válido.",
     "already_exists": "Ya existe un elemento con ese nombre.",
-    "vscode_not_found": "No se encuentra VS Code (comando code). Instálalo o añádelo al PATH."
+    "vscode_not_found": "No se encuentra VS Code (comando code). Instálalo o añádelo al PATH.",
+    "shortcut_taken": "Ese atajo ya está en uso por otra aplicación.",
+    "shortcut_invalid": "El atajo no es válido.",
+    "autostart_failed": "No se pudo cambiar el arranque con Windows.",
+    "update_failed": "No se pudo actualizar. Inténtalo más tarde.",
+    "notify_failed": "No se pudo mostrar la notificación.",
+    "tray_missing": "El icono de la bandeja no está disponible."
   },
   "tree": {
     "recent": "Recientes y favoritos",
@@ -145,5 +151,10 @@
     "hint": "↑↓ moverse · Intro elegir · Esc cerrar",
     "fav": "Favorito",
     "recent": "Reciente"
+  },
+  "update": {
+    "available": "Hay una versión nueva ({version})",
+    "install": "Actualizar",
+    "later": "Más tarde"
   }
 }
