@@ -121,33 +121,46 @@ fn run_claude_help() -> Option<String> {
 /// Embedded catalog, plus flags discovered in `claude --help` when `include_help` is set.
 /// Any problem running claude falls back to the embedded catalog only.
 #[tauri::command]
-pub async fn get_catalog(include_help: bool) -> Vec<CatalogItem> {
-    let items = catalog::load_embedded();
-    if !include_help {
-        return items;
+pub async fn get_catalog(app: tauri::AppHandle, include_help: bool) -> Vec<CatalogItem> {
+    use tauri::Manager;
+    let mut items = catalog::load_embedded();
+    if include_help {
+        // Blocking process work stays off the UI/main thread.
+        let help = tauri::async_runtime::spawn_blocking(run_claude_help).await.ok().flatten();
+        if let Some(help) = help {
+            items = catalog::merge_help(items, help_parser::parse(&help));
+        }
     }
-    // Blocking process work stays off the UI/main thread.
-    let help = tauri::async_runtime::spawn_blocking(run_claude_help).await.ok().flatten();
-    match help {
-        Some(help) => catalog::merge_help(items, help_parser::parse(&help)),
-        None => items,
+    if let Ok(mut cache) = app.state::<CatalogCache>().0.lock() {
+        *cache = Some(items.clone());
+    }
+    items
+}
+
+/// Last catalog returned by `get_catalog` (including `--help` flags); previews plan against it.
+#[derive(Default)]
+pub struct CatalogCache(pub std::sync::Mutex<Option<Vec<CatalogItem>>>);
+
+impl CatalogCache {
+    fn items(&self) -> Vec<CatalogItem> {
+        self.0.lock().ok().and_then(|g| g.clone()).unwrap_or_else(catalog::load_embedded)
     }
 }
 
-/// Resolves the plan for `req` against the embedded catalog.
-fn make_plan(req: &LaunchRequest) -> AppResult<LaunchPlan> {
+/// Resolves the plan for `req` against the cached (merged) catalog, else the embedded one.
+fn make_plan(cache: &CatalogCache, req: &LaunchRequest) -> AppResult<LaunchPlan> {
     // T6: secrets::get
-    command::plan(req, &catalog::load_embedded(), &|_| None, command::detect_pwsh())
+    command::plan(req, &cache.items(), &|_| None, command::detect_pwsh())
 }
 
 #[tauri::command]
-pub fn build_command(req: LaunchRequest) -> AppResult<String> {
-    Ok(make_plan(&req)?.preview)
+pub fn build_command(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<String> {
+    Ok(make_plan(&cache, &req)?.preview)
 }
 
 #[tauri::command]
-pub fn launch(req: LaunchRequest) -> AppResult<HistoryEntry> {
-    let plan = make_plan(&req)?;
+pub fn launch(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<HistoryEntry> {
+    let plan = make_plan(&cache, &req)?;
     launch::run(&plan)?;
     let mut cfg = config::load();
     let entry = HistoryEntry {

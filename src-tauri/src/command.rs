@@ -44,7 +44,7 @@ struct EnvVar {
 /// PowerShell also treats the typographic single quotes as quote characters, so those are doubled too.
 pub fn ps_quote(s: &str) -> String {
     let safe = !s.is_empty()
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || "_-./:=,@+".contains(c));
+        && s.chars().all(|c| c.is_ascii_alphanumeric() || "_-./:=+".contains(c));
     if safe {
         return s.to_string();
     }
@@ -58,6 +58,27 @@ pub fn ps_quote(s: &str) -> String {
     }
     out.push('\'');
     out
+}
+
+fn stamp() -> u128 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0)
+}
+
+/// POSIX single-quote literal unless `s` is made of safe characters only.
+pub fn sh_quote(s: &str) -> String {
+    let safe = !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "_-./:=+".contains(c));
+    if safe { s.to_string() } else { format!("'{}'", s.replace('\'', "'\\''")) }
+}
+
+/// `C:\Users\A B\x.sh` -> `/mnt/c/Users/A B/x.sh` (other paths: backslashes become slashes).
+pub fn to_wsl_path(p: &str) -> String {
+    let b = p.as_bytes();
+    if b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':' {
+        let rest = p[2..].replace('\\', "/");
+        format!("/mnt/{}/{}", (b[0] as char).to_ascii_lowercase(), rest.trim_start_matches('/'))
+    } else {
+        p.replace('\\', "/")
+    }
 }
 
 /// Windows Terminal reads `;` as its own command separator in every argument.
@@ -179,34 +200,36 @@ pub fn plan_in(
     let (envs, args) = collect(req, catalog, secret);
 
     if req.target == Target::Wsl {
-        let mut wt_args: Vec<String> =
-            ["-d", &req.path, "wsl.exe", "--cd", &req.path, "--", "env"].iter().map(|s| s.to_string()).collect();
-        wt_args.extend(envs.iter().map(|e| format!("{}={}", e.key, e.value)));
-        wt_args.push("claude".into());
-        wt_args.extend(args.iter().cloned());
-        let preview_env: Vec<String> = envs
-            .iter()
-            .map(|e| if e.secret { format!("{}={MASK}", e.key) } else { ps_quote(&format!("{}={}", e.key, e.value)) })
-            .collect();
+        // Values never reach a shell command line: they live single-quoted in a script file.
+        let script_path = launch_dir.join(format!("{}.sh", stamp())).to_string_lossy().into_owned();
+        let env_toks: Vec<String> = envs.iter().map(|e| sh_quote(&format!("{}={}", e.key, e.value))).collect();
+        let mut line = vec!["exec".to_string(), "env".to_string()];
+        line.extend(env_toks);
+        line.push("claude".into());
+        line.extend(args.iter().map(|a| sh_quote(a)));
+        let script = format!("rm -f -- \"$0\"\n{}\n", line.join(" "));
         let mut parts = vec!["env".to_string()];
-        parts.extend(preview_env);
+        parts.extend(envs.iter().map(|e| {
+            if e.secret { format!("{}={MASK}", e.key) } else { sh_quote(&format!("{}={}", e.key, e.value)) }
+        }));
         parts.push("claude".into());
-        parts.extend(args.iter().map(|a| ps_quote(a)));
+        parts.extend(args.iter().map(|a| sh_quote(a)));
+        let wt_args: Vec<String> =
+            ["-d", &req.path, "wsl.exe", "--cd", &req.path, "-e", "bash", "-l", &to_wsl_path(&script_path)]
+                .iter()
+                .map(|a| wt_escape(a))
+                .collect();
         return Ok(LaunchPlan {
             preview: format!("wsl> {}", parts.join(" ")),
             program: "wt.exe".into(),
-            args: wt_args.iter().map(|a| wt_escape(a)).collect(),
-            script: None,
-            script_path: None,
+            args: wt_args,
+            script: Some(script),
+            script_path: Some(script_path),
             cwd: req.path.clone(),
         });
     }
 
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis())
-        .unwrap_or(0);
-    let script_path: PathBuf = launch_dir.join(format!("{millis}.ps1"));
+    let script_path: PathBuf = launch_dir.join(format!("{}.ps1", stamp()));
     let script_path = script_path.to_string_lossy().into_owned();
 
     let mut preview_parts: Vec<String> = envs
@@ -287,7 +310,9 @@ mod tests {
 
     #[test]
     fn ps_quote_rules() {
-        assert_eq!(ps_quote("abc-1.2/x:y=z,@+"), "abc-1.2/x:y=z,@+");
+        assert_eq!(ps_quote("abc-1.2/x:y=z+"), "abc-1.2/x:y=z+");
+        assert_eq!(ps_quote("@foo"), "'@foo'");
+        assert_eq!(ps_quote("hooks,mcp"), "'hooks,mcp'");
         assert_eq!(ps_quote(""), "''");
         assert_eq!(ps_quote(r"C:\Proyectos\José's app; v2"), r"'C:\Proyectos\José''s app; v2'");
         assert_eq!(ps_quote("a\u{2019}b"), "'a\u{2019}\u{2019}b'");
@@ -343,24 +368,61 @@ mod tests {
     }
 
     #[test]
-    fn wsl_escapes_semicolon() {
+    fn wsl_values_are_single_argv() {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("a; b");
         std::fs::create_dir(&dir).unwrap();
         let r = req(
             &dir,
             Target::Wsl,
-            sel(&[("env.DISABLE_TELEMETRY", None), ("flag.model", Some("x;y")), ("flag.add-dir", Some("/a;/b"))]),
+            sel(&[
+                ("env.DISABLE_TELEMETRY", None),
+                ("flag.model", Some("x;id")),
+                ("flag.name", Some("a b$(x)")),
+                ("flag.worktree", Some("it's")),
+            ]),
         );
         let p = plan_t(&r, tmp.path());
-        let d = dir.to_string_lossy().into_owned().replace(';', "\\;");
+        let s = p.script.clone().unwrap();
+        let line = s.lines().nth(1).unwrap();
+        for v in ["'x;id'", "'a b$(x)'", "'it'\\''s'"] {
+            assert!(line.contains(v), "{line}");
+        }
+        assert!(line.starts_with("exec env DISABLE_TELEMETRY=1 claude "), "{line}");
+        assert_eq!(s.lines().next().unwrap(), "rm -f -- \"$0\"");
         assert_eq!(p.program, "wt.exe");
-        assert!(p.script.is_none());
-        assert_eq!(p.args[..7], ["-d", &d, "wsl.exe", "--cd", &d, "--", "env"]);
-        assert!(p.args.iter().all(|a| !a.replace("\\;", "").contains(';')), "{:?}", p.args);
-        assert!(p.args.contains(&"DISABLE_TELEMETRY=1".to_string()));
-        assert!(p.args.contains(&"x\\;y".to_string()));
+        let d = dir.to_string_lossy().into_owned().replace(';', "\\;");
+        let sp = to_wsl_path(p.script_path.as_ref().unwrap()).replace(';', "\\;");
+        assert_eq!(p.args, ["-d", &d, "wsl.exe", "--cd", &d, "-e", "bash", "-l", &sp]);
+        assert!(p.args.iter().all(|a| !a.contains("x;id") && !a.contains("$(x)") && !a.contains("it's")));
+        assert!(p.script_path.as_ref().unwrap().ends_with(".sh"));
         assert!(p.preview.starts_with("wsl> env DISABLE_TELEMETRY=1 claude "), "{}", p.preview);
+        assert!(p.preview.contains("'it'\\''s'"));
+        // bytes: LF only, no BOM
+        let file = tmp.path().join("t.sh");
+        write_script(&file, &s).unwrap();
+        let bytes = std::fs::read(&file).unwrap();
+        assert!(!bytes.contains(&b'\r'));
+        assert_ne!(&bytes[..3], &[0xEF, 0xBB, 0xBF]);
+    }
+
+    #[test]
+    fn wsl_secret_masked_in_preview_real_in_script() {
+        let tmp = tempfile::tempdir().unwrap();
+        let secret = |k: &str| (k == "ANTHROPIC_API_KEY").then(|| "sk-ant-it's".to_string());
+        let r = req(tmp.path(), Target::Wsl, sel(&[("env.ANTHROPIC_API_KEY", None)]));
+        let p = plan_in(tmp.path(), &r, &load_embedded(), &secret, "pwsh").unwrap();
+        assert!(p.preview.contains("ANTHROPIC_API_KEY='••••'") && !p.preview.contains("sk-ant"));
+        assert!(p.script.unwrap().contains("'ANTHROPIC_API_KEY=sk-ant-it'\\''s'"));
+        assert!(p.args.iter().all(|a| !a.contains("sk-ant")));
+    }
+
+    #[test]
+    fn sh_quote_and_wsl_path() {
+        assert_eq!(sh_quote("a-b/c.d:e=f+g_1"), "a-b/c.d:e=f+g_1");
+        assert_eq!(sh_quote(""), "''");
+        assert_eq!(sh_quote("it's"), "'it'\\''s'");
+        assert_eq!(to_wsl_path(r"C:\Users\A B\x.sh"), "/mnt/c/Users/A B/x.sh");
     }
 
     #[test]
@@ -396,11 +458,6 @@ mod tests {
         // missing secret: variable skipped, no error
         let p = plan_t(&r, tmp.path());
         assert!(!p.script.unwrap().contains("ANTHROPIC_API_KEY"));
-        // wsl: masked in preview, real in args
-        let r = req(tmp.path(), Target::Wsl, sel(&[("env.ANTHROPIC_API_KEY", None)]));
-        let p = plan_in(tmp.path(), &r, &load_embedded(), &secret, "pwsh").unwrap();
-        assert!(p.preview.contains("ANTHROPIC_API_KEY='••••'") && !p.preview.contains("sk-ant"));
-        assert!(p.args.contains(&"ANTHROPIC_API_KEY=sk-ant-it's".to_string()));
     }
 
     #[test]
