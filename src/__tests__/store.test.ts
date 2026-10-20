@@ -5,13 +5,16 @@ vi.mock("../api", () => ({
   buildCommand: vi.fn(),
   launch: vi.fn(),
   getConfig: vi.fn(),
+  getCatalog: vi.fn(),
+  systemLocale: vi.fn().mockResolvedValue("es"),
   refreshTray: vi.fn(),
 }));
 
 import * as api from "../api";
 import { useStore, PINNED_SAVE_MS } from "../store";
 import type { AppConfig } from "../api";
-import { currentRequest, requestKey } from "../logic/request";
+import { currentRequest, previewKey } from "../logic/request";
+import { setLanguage } from "../i18n";
 
 const mocked = vi.mocked(api);
 const cfg = { pinned: {}, favorites: [], recents: [] } as unknown as AppConfig;
@@ -74,7 +77,8 @@ describe("store launching", () => {
     await useStore.getState().launchWithPreview({ extra: { "flag.continue": null } });
     const built = mocked.buildCommand.mock.calls[0][0];
     expect(built.selection).toEqual({ "flag.model": "opus", "flag.continue": null });
-    expect(mocked.launch).toHaveBeenCalledWith(built);
+    // the preview shown is sent along: the engine refuses if a fresh plan differs
+    expect(mocked.launch).toHaveBeenCalledWith(built, "claude --model opus --continue");
     expect(mocked.launch.mock.calls[0][0]).toBe(built);
     expect(useStore.getState().toastCode).toBe("claude --model opus --continue");
   });
@@ -90,19 +94,97 @@ describe("store launching", () => {
 
   it("launchPreviewed (Ctrl+Enter) only launches the stored request while it matches the live state", async () => {
     const req = currentRequest(useStore.getState())!;
-    useStore.setState({ preview: { key: requestKey(req), request: req, text: "claude --model opus", error: false } });
+    const rev = useStore.getState().previewRev;
+    useStore.setState({ preview: { key: previewKey(req, rev), request: req, text: "claude --model opus", error: false } });
     useStore.setState({ opt: { active: { "flag.model": "sonnet" }, pinned: {} } });
     await useStore.getState().launchPreviewed();
     expect(mocked.launch).not.toHaveBeenCalled();
     useStore.setState({ opt: { active: { "flag.model": "opus" }, pinned: {} } });
     await useStore.getState().launchPreviewed();
-    expect(mocked.launch).toHaveBeenCalledWith(req);
+    expect(mocked.launch).toHaveBeenCalledWith(req, "claude --model opus");
   });
 
   it("launchPreviewed refuses an error preview", async () => {
     const req = currentRequest(useStore.getState())!;
-    useStore.setState({ preview: { key: requestKey(req), request: req, text: "boom", error: true } });
+    useStore.setState({ preview: { key: previewKey(req, useStore.getState().previewRev), request: req, text: "boom", error: true } });
     await useStore.getState().launchPreviewed();
     expect(mocked.launch).not.toHaveBeenCalled();
+  });
+
+  it("a secret change (previewRev bump) makes the on-screen preview unlaunchable", async () => {
+    const req = currentRequest(useStore.getState())!;
+    useStore.setState({ preview: { key: previewKey(req, useStore.getState().previewRev), request: req, text: "x", error: false } });
+    useStore.getState().invalidatePreview();
+    await useStore.getState().launchPreviewed();
+    expect(mocked.launch).not.toHaveBeenCalled();
+  });
+
+  it("preview_stale from the engine re-previews and explains it", async () => {
+    setLanguage("es");
+    mocked.launch.mockRejectedValue({ code: "preview_stale", message: "" });
+    const before = useStore.getState().previewRev;
+    await useStore.getState().launchRequest(currentRequest(useStore.getState())!, "old");
+    expect(useStore.getState().previewRev).toBe(before + 1);
+    expect(useStore.getState().toast).toBe("La vista previa ha cambiado; revísala y vuelve a pulsar Iniciar");
+  });
+
+  it("waits for the pinned save before launching", async () => {
+    const order: string[] = [];
+    let release!: () => void;
+    mocked.saveConfig.mockImplementationOnce(() => new Promise<void>((r) => { release = () => { order.push("saved"); r(); }; }));
+    mocked.launch.mockImplementation(async () => { order.push("launch"); return entry; });
+    useStore.setState({ config: { ...cfg } });
+    useStore.getState().updateOpt({ active: { "flag.model": "opus" }, pinned: { "flag.model": "opus" } });
+    const p = useStore.getState().launchRequest(currentRequest(useStore.getState())!, "x");
+    await Promise.resolve();
+    expect(order).toEqual([]);
+    release();
+    await p;
+    expect(order).toEqual(["saved", "launch"]);
+  });
+});
+
+describe("store config safety", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    useStore.setState({ config: { ...cfg, profiles: [], folderProfiles: {} }, configError: false, toast: null, selectedPath: null, opt: { active: {}, pinned: {} } });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("replaceConfig cancels a pending pinned save", () => {
+    useStore.getState().updateOpt({ active: { "flag.model": "opus" }, pinned: { "flag.model": "opus" } });
+    useStore.getState().replaceConfig({ ...cfg, pinned: { "flag.debug": null }, defaultTarget: "wt", language: null } as AppConfig);
+    vi.advanceTimersByTime(PINNED_SAVE_MS * 2);
+    void useStore.getState().flushPinned();
+    expect(mocked.saveConfig).not.toHaveBeenCalled();
+    expect(useStore.getState().opt.pinned).toEqual({ "flag.debug": null });
+  });
+
+  it("re-selecting the same folder does not re-apply its profile", () => {
+    const profile = { id: "p", name: "P", builtin: false, selection: { "flag.model": "opus" }, target: "wt" as const };
+    useStore.setState({ config: { ...cfg, profiles: [profile], folderProfiles: { "C:\\x": "p" }, activeProfile: "p" } as AppConfig });
+    useStore.getState().selectPath("C:\\x");
+    expect(useStore.getState().opt.active).toEqual({ "flag.model": "opus" });
+    useStore.setState({ opt: { active: { "flag.model": "sonnet", "flag.debug": null }, pinned: {} } });
+    useStore.getState().selectPath("C:\\x");
+    expect(useStore.getState().opt.active).toEqual({ "flag.model": "sonnet", "flag.debug": null });
+  });
+
+  it("an unreadable config blocks the UI instead of toasting, and a good retry clears it", async () => {
+    mocked.getConfig.mockRejectedValueOnce({ code: "config_unreadable", message: "" });
+    await useStore.getState().load();
+    expect(useStore.getState().configError).toBe(true);
+    expect(useStore.getState().toast).toBeNull();
+    mocked.getConfig.mockResolvedValueOnce({ ...cfg, language: "es", defaultTarget: "wt" } as AppConfig);
+    mocked.getCatalog.mockResolvedValue([]);
+    await useStore.getState().load();
+    expect(useStore.getState().configError).toBe(false);
+  });
+
+  it("a refused save (config_unreadable) raises the blocking error", async () => {
+    mocked.saveConfig.mockRejectedValueOnce({ code: "config_unreadable", message: "" });
+    expect(await useStore.getState().saveConfig({ showHidden: true })).toBe(false);
+    expect(useStore.getState().configError).toBe(true);
   });
 });

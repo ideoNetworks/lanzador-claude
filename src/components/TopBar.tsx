@@ -1,9 +1,9 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
 import logoWhite from "../assets/logo-iDeo-blanco-Servicios-Informaticos-Premium.svg";
 import { useStore } from "../store";
-import { useT, setLanguage, getLanguage } from "../i18n";
+import { useT, getLanguage } from "../i18n";
 import type { Lang } from "../api";
 import { icons } from "./icons";
+import { useImageDataUrl } from "./useImageDataUrl";
 
 const systemDark = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -17,13 +17,14 @@ export default function TopBar() {
   const config = useStore((s) => s.config);
   const saveConfig = useStore((s) => s.saveConfig);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const logoPath = config?.branding.logoPath;
+  const changeLanguage = useStore((s) => s.changeLanguage);
+  const custom = useImageDataUrl(config?.branding.logoPath);
   const lang = getLanguage();
 
   return (
     <header className="top">
       <div className="brand">
-        <img src={logoPath ? convertFileSrc(logoPath) : logoWhite} alt={t("top.logoAlt")} />
+        <img src={custom ?? logoWhite} alt={t("top.logoAlt")} />
         <span>{t("app.name")}</span>
       </div>
       <button className="search" onClick={() => setPaletteOpen(true)} aria-label={t("top.search")}>
@@ -35,11 +36,7 @@ export default function TopBar() {
         className="tbtn"
         aria-label={t("top.language")}
         value={lang}
-        onChange={(e) => {
-          const l = e.target.value as Lang;
-          setLanguage(l);
-          void saveConfig({ language: l });
-        }}
+        onChange={(e) => void changeLanguage(e.target.value as Lang)}
       >
         <option value="es">Español</option>
         <option value="en">English</option>

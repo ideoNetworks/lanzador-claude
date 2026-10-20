@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Claude Launcher"
+    "name": "Lanzador Claude"
   },
   "top": {
     "search": "Search folder or project…",
@@ -23,10 +23,6 @@
     "connecting": "Connecting to the engine…",
     "connected": "Connected to the engine",
     "disconnected": "Engine unavailable"
-  },
-  "placeholder": {
-    "title": "This section is not available yet",
-    "body": "It will be completed in an upcoming version."
   },
   "common": {
     "close": "Close",
@@ -87,7 +83,17 @@
     "tray_missing": "The tray icon is not available.",
     "skill_not_found": "The skill was not found in the repository.",
     "parent_missing": "The parent folder does not exist.",
-    "template_not_found": "The template was not found; the built-in one was used."
+    "template_not_found": "The template was not found; the built-in one was used.",
+    "config_unreadable": "The configuration file cannot be read.",
+    "preview_stale": "The preview has changed; check it and press Launch again.",
+    "image_type": "Unsupported image format (use SVG, PNG, ICO or JPG).",
+    "image_too_large": "The image is larger than 2 MB.",
+    "skills_not_synced": "The skills repository has not been synced yet."
+  },
+  "cfgError": {
+    "title": "The configuration cannot be read",
+    "body": "config.json exists but cannot be read (another program may be locking it, or permissions are missing). To keep your settings safe, nothing will be saved until it can be read.",
+    "retry": "Retry"
   },
   "tree": {
     "recent": "Recent and favourites",
@@ -167,7 +173,8 @@
   "toast": {
     "launched": "Claude launched in {path}",
     "copied": "Command copied",
-    "secretSaved": "Key saved in Credential Manager"
+    "secretSaved": "Key saved in Credential Manager",
+    "previewStale": "The preview has changed; check it and press Launch again"
   },
   "palette": {
     "label": "Search folders",
@@ -218,6 +225,7 @@
     "shortcutHint": "Click the field and press the combination you want (with Ctrl, Alt, Shift or Win).",
     "shortcutPress": "Press a combination…",
     "shortcutSaved": "Shortcut saved: {combo}",
+    "shortcutStartupFailed": "The shortcut {combo} could not be registered. {reason} Choose another one.",
     "explorerMenu": "“Open with Claude” Explorer menu",
     "explorerMenuHint": "Adds the entry to the folder context menu (current user only).",
     "skills": "Skills",
@@ -236,6 +244,11 @@
     "modeAuto": "Automatic",
     "modeNotify": "Notify me",
     "modeManual": "Manual",
+    "checkUpdates": "Check for updates",
+    "checkNow": "Check now",
+    "checkNowHint": "Looks for a new version without installing it; works in any mode.",
+    "checking": "Checking…",
+    "upToDate": "You are up to date",
     "endpoint": "Updates URL (optional)",
     "endpointHint": "Applies the next time the application starts.",
     "branding": "Branding",
@@ -271,7 +284,7 @@
     "logoAlt": "iDeo",
     "story": {
       "leadTitle": "Claude Code, one click away",
-      "leadBody": "Claude Launcher is the front door to Claude Code on Windows. Pick the project folder, tick how you want Claude to start and press Launch. The launcher opens the terminal in that folder with environment variables and flags already set, so there are no options to remember and no paths to type.",
+      "leadBody": "Lanzador Claude is the front door to Claude Code on Windows. Pick the project folder, tick how you want Claude to start and press Launch. The launcher opens the terminal in that folder with environment variables and flags already set, so there are no options to remember and no paths to type.",
       "whatTitle": "What it does",
       "what1": "Browses the whole disk from the root folder you choose (`C:\\Desarrollo` by default), with recents and favourites.",
       "what2": "Shows every Claude Code flag and environment variable with an explanation in your language.",
@@ -317,6 +330,8 @@
     "noRepo": "There is no skills repository yet.",
     "configureRepo": "Set up a skills repository in Settings",
     "noSkills": "The repository has no skills.",
+    "notSynced": "The skills repository has not been synced yet.",
+    "goSync": "Sync the repository in Skills",
     "loadingSkills": "Loading skills…",
     "scope": "Install in",
     "scopeProject": "The project (.claude/skills/)",
@@ -344,7 +359,9 @@
     "sync": "Sync",
     "syncing": "Syncing…",
     "available": "Repository skills",
-    "none": "The repository has no skills. Press Sync.",
+    "none": "The repository has no skills.",
+    "notSynced": "Sync the repository to see its skills: press Sync.",
+    "syncFailed": "The last sync failed: {error}",
     "target": "Install in",
     "targetProject": "Selected project",
     "targetGlobal": "Global (~/.claude/skills)",

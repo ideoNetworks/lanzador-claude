@@ -27,9 +27,10 @@ export default function SkillsSection() {
 
   if (url === undefined) return null;
 
-  const commitUrl = () => {
+  /** Resolves false when the URL could not be saved (the error is already shown). */
+  const commitUrl = async (): Promise<boolean> => {
     const v = draft.trim();
-    if (v !== url) void saveConfig({ skillsRepoUrl: v });
+    return v === url ? true : saveConfig({ skillsRepoUrl: v });
   };
 
   const saveToken = async () => {
@@ -55,9 +56,10 @@ export default function SkillsSection() {
   };
 
   const sync = async () => {
-    commitUrl();
     setSyncing(true);
     try {
+      // The engine reads the URL from config.json: it must be saved before syncing.
+      if (!(await commitUrl())) return;
       await api.skillsSync();
       showToast(t("settings.synced"));
     } catch (e) {
@@ -78,8 +80,8 @@ export default function SkillsSection() {
             placeholder="https://github.com/…"
             aria-label={t("settings.repoUrl")}
             onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitUrl}
-            onKeyDown={(e) => e.key === "Enter" && commitUrl()}
+            onBlur={() => void commitUrl()}
+            onKeyDown={(e) => e.key === "Enter" && void commitUrl()}
           />
           <button className="btn" disabled={syncing} onClick={() => void sync()}>
             {icons.refresh}

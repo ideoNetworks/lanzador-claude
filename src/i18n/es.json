@@ -24,10 +24,6 @@
     "connected": "Conectado al motor",
     "disconnected": "Motor no disponible"
   },
-  "placeholder": {
-    "title": "Esta sección aún no está disponible",
-    "body": "Se completará en una versión próxima."
-  },
   "common": {
     "close": "Cerrar",
     "copy": "Copiar",
@@ -87,7 +83,17 @@
     "tray_missing": "El icono de la bandeja no está disponible.",
     "skill_not_found": "No se encontró la skill en el repositorio.",
     "parent_missing": "La carpeta padre no existe.",
-    "template_not_found": "No se encontró la plantilla; se usó la integrada."
+    "template_not_found": "No se encontró la plantilla; se usó la integrada.",
+    "config_unreadable": "No se puede leer el archivo de configuración.",
+    "preview_stale": "La vista previa ha cambiado; revísala y vuelve a pulsar Iniciar.",
+    "image_type": "Formato de imagen no admitido (usa SVG, PNG, ICO o JPG).",
+    "image_too_large": "La imagen ocupa más de 2 MB.",
+    "skills_not_synced": "El repositorio de skills aún no se ha sincronizado."
+  },
+  "cfgError": {
+    "title": "No se puede leer la configuración",
+    "body": "El archivo config.json existe pero no se puede leer (puede estar bloqueado por otro programa o sin permisos). Para no perder tus ajustes, no se guardará nada hasta poder leerlo.",
+    "retry": "Reintentar"
   },
   "tree": {
     "recent": "Recientes y favoritos",
@@ -167,7 +173,8 @@
   "toast": {
     "launched": "Claude iniciado en {path}",
     "copied": "Comando copiado",
-    "secretSaved": "Clave guardada en el Administrador de credenciales"
+    "secretSaved": "Clave guardada en el Administrador de credenciales",
+    "previewStale": "La vista previa ha cambiado; revísala y vuelve a pulsar Iniciar"
   },
   "palette": {
     "label": "Buscar carpetas",
@@ -218,6 +225,7 @@
     "shortcutHint": "Pulsa el campo y la combinación que quieras (con Ctrl, Alt, Mayús o Win).",
     "shortcutPress": "Pulsa una combinación…",
     "shortcutSaved": "Atajo guardado: {combo}",
+    "shortcutStartupFailed": "No se pudo registrar el atajo {combo}. {reason} Elige otro.",
     "explorerMenu": "Menú «Abrir con Claude» en el Explorador",
     "explorerMenuHint": "Añade la opción al menú contextual de las carpetas (solo tu usuario).",
     "skills": "Skills",
@@ -236,6 +244,11 @@
     "modeAuto": "Automática",
     "modeNotify": "Avisar",
     "modeManual": "Manual",
+    "checkUpdates": "Buscar actualizaciones",
+    "checkNow": "Comprobar ahora",
+    "checkNowHint": "Busca una versión nueva sin instalarla; funciona en cualquier modo.",
+    "checking": "Buscando…",
+    "upToDate": "Estás al día",
     "endpoint": "URL de actualizaciones (opcional)",
     "endpointHint": "Se aplica al reiniciar la aplicación.",
     "branding": "Marca",
@@ -317,6 +330,8 @@
     "noRepo": "Aún no hay repositorio de skills.",
     "configureRepo": "Configura un repositorio de skills en Ajustes",
     "noSkills": "El repositorio no tiene skills.",
+    "notSynced": "El repositorio de skills aún no se ha sincronizado.",
+    "goSync": "Sincroniza el repositorio en Skills",
     "loadingSkills": "Cargando skills…",
     "scope": "Instalar en",
     "scopeProject": "El proyecto (.claude/skills/)",
@@ -344,7 +359,9 @@
     "sync": "Sincronizar",
     "syncing": "Sincronizando…",
     "available": "Skills del repositorio",
-    "none": "El repositorio no tiene skills. Pulsa Sincronizar.",
+    "none": "El repositorio no tiene skills.",
+    "notSynced": "Sincroniza el repositorio para ver sus skills: pulsa Sincronizar.",
+    "syncFailed": "La última sincronización falló: {error}",
     "target": "Instalar en",
     "targetProject": "Proyecto seleccionado",
     "targetGlobal": "Global (~/.claude/skills)",

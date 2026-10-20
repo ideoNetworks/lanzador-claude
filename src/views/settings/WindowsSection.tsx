@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import * as api from "../../api";
-import { errorText } from "../../i18n/errors";
+import { errorText, shortcutFailedText } from "../../i18n/errors";
 import { useStore } from "../../store";
 import { useT } from "../../i18n";
 import { comboFromEvent } from "../../logic/shortcut";
@@ -11,8 +11,11 @@ function ShortcutField() {
   const t = useT();
   const shortcut = useStore((s) => s.config?.shortcut ?? "");
   const showToast = useStore((s) => s.showToast);
+  const startupError = useStore((s) => s.shortcutError);
+  const setStartupError = useStore((s) => s.setShortcutError);
   const [recording, setRecording] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setError] = useState<string | null>(null);
+  const error = localError ?? (startupError ? shortcutFailedText(startupError) : null);
 
   const onKeyDown = async (e: KeyboardEvent<HTMLButtonElement>) => {
     if (!recording) return;
@@ -22,11 +25,13 @@ function ShortcutField() {
     const combo = comboFromEvent(e.nativeEvent);
     if (!combo) return;
     setRecording(false);
-    if (combo === shortcut) return setError(null);
+    // The same combo is a no-op only while it is actually registered.
+    if (combo === shortcut && !startupError) return setError(null);
     try {
       // The engine saves the config and emits `config-changed`: nothing to write from here.
       await api.setShortcut(combo);
       setError(null);
+      setStartupError(null);
       showToast(t("settings.shortcutSaved", { combo }));
     } catch (err) {
       setError(errorText(err));

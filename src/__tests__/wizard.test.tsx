@@ -71,6 +71,23 @@ describe("NewProjectView", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Ya existe");
   });
 
+  it("step 3 tells a never-synced repo apart from one without skills", async () => {
+    useStore.setState({ config: cfg({ skillsRepoUrl: "https://x/y.git" }) });
+    mocked.skillsList.mockRejectedValue({ code: "skills_not_synced", message: "" });
+    render(<NewProjectView />);
+    fireEvent.change(screen.getByPlaceholderText("mi-proyecto"), { target: { value: "p" } });
+    next(); next();
+    expect(await screen.findByText("El repositorio de skills aún no se ha sincronizado.")).toBeTruthy();
+    fireEvent.click(screen.getByText("Sincroniza el repositorio en Skills"));
+    expect(useStore.getState().view).toBe("skills");
+    cleanup();
+    mocked.skillsList.mockResolvedValue([]);
+    render(<NewProjectView />);
+    fireEvent.change(screen.getByPlaceholderText("mi-proyecto"), { target: { value: "p" } });
+    next(); next();
+    expect(await screen.findByText("El repositorio no tiene skills.")).toBeTruthy();
+  });
+
   it("step 3 links to Settings when no skills repo is set", () => {
     render(<NewProjectView />);
     fireEvent.change(screen.getByPlaceholderText("mi-proyecto"), { target: { value: "p" } });

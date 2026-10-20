@@ -1,8 +1,29 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import * as api from "../../api";
+import type { AppConfig } from "../../api";
 import { useStore } from "../../store";
 import { useT } from "../../i18n";
 import { Row, Section } from "./parts";
+
+/** An imported config only changes the file: make Explorer menu, autostart and the global
+ * shortcut match it (each failure is reported, the others still run). */
+export async function applyImportedIntegration(cfg: AppConfig, onError: (e: unknown) => void): Promise<void> {
+  for (const step of [() => api.setExplorerMenu(cfg.explorerMenu), () => api.setAutostart(cfg.autostart)]) {
+    try {
+      await step();
+    } catch (e) {
+      onError(e);
+    }
+  }
+  try {
+    await api.setShortcut(cfg.shortcut);
+    useStore.getState().setShortcutError(null);
+  } catch (e) {
+    const code = (e as { code?: string } | null)?.code ?? "shortcut_taken";
+    useStore.getState().setShortcutError({ code, message: cfg.shortcut });
+    onError(e);
+  }
+}
 
 export default function ConfigSection() {
   const t = useT();
@@ -26,8 +47,10 @@ export default function ConfigSection() {
     try {
       const path = await open({ multiple: false, directory: false, filters });
       if (typeof path !== "string") return;
-      replaceConfig(await api.importConfig(path));
+      const cfg = await api.importConfig(path);
+      replaceConfig(cfg);
       showToast(t("settings.imported"));
+      await applyImportedIntegration(cfg, showError);
     } catch (e) {
       showError(e);
     }

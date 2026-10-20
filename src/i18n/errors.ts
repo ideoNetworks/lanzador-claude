@@ -9,3 +9,8 @@ export function errorText(e: unknown): string {
   }
   return typeof e === "string" ? e : String(e);
 }
+
+/** Startup shortcut failure: `message` carries the combo, `code` the reason. */
+export function shortcutFailedText(e: { code: string; message: string }): string {
+  return t("settings.shortcutStartupFailed", { combo: e.message, reason: errorText({ code: e.code }) });
+}

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
 import * as api from "../api";
-import type { AppConfig, Lang, ViewId } from "../api";
+import type { AppConfig, AppError, Lang, ViewId } from "../api";
 import { setLanguage } from "../i18n";
+import { shortcutFailedText } from "../i18n/errors";
 import { useStore } from "../store";
 
 const VIEWS: readonly string[] = ["launch", "new", "profiles", "skills", "history", "settings"];
@@ -34,7 +35,14 @@ export function applyConfig(cfg: AppConfig): void {
   if (useStore.getState().config) useStore.setState({ config: cfg });
 }
 
-/** Listens to the engine events: navigate, open-path, language-changed, update-available. */
+/** Startup registration of the global shortcut failed: remember it for Settings and say so. */
+export function applyShortcutFailed(err: AppError): void {
+  const s = useStore.getState();
+  s.setShortcutError(err);
+  s.showToast(shortcutFailedText(err));
+}
+
+/** Listens to the engine events: navigate, open-path, language-changed, update-available, shortcut-failed. */
 export function useAppEvents(): void {
   useEffect(() => {
     let alive = true;
@@ -56,6 +64,9 @@ export function useAppEvents(): void {
     // A path passed on the command line before this hook was listening.
     api.takePendingOpen().then((p) => { if (alive && p) applyOpenPath(p); }).catch(() => {});
     api.takePendingUpdate().then((u) => { if (alive && u) useStore.getState().setUpdate(u); }).catch(() => {});
+    void sub<AppError>("shortcut-failed", applyShortcutFailed);
+    // Registration happens before the UI listens: the engine keeps the failure for us.
+    api.takeShortcutError().then((e) => { if (alive && e) applyShortcutFailed(e); }).catch(() => {});
     return () => {
       alive = false;
       unlisten.forEach((u) => u());

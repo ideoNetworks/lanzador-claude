@@ -3,7 +3,7 @@ import * as api from "../api";
 import { useStore } from "../store";
 import { useT } from "../i18n";
 import { errorText } from "../i18n/errors";
-import { currentRequest, requestKey } from "../logic/request";
+import { currentRequest, previewKey } from "../logic/request";
 import { icons } from "./icons";
 
 export const PREVIEW_DEBOUNCE_MS = 150;
@@ -16,6 +16,7 @@ export default function CommandFooter() {
   const active = useStore((s) => s.opt.active);
   const launching = useStore((s) => s.launching);
   const preview = useStore((s) => s.preview);
+  const previewRev = useStore((s) => s.previewRev);
   const setPreview = useStore((s) => s.setPreview);
   const launchPreviewed = useStore((s) => s.launchPreviewed);
   const showToast = useStore((s) => s.showToast);
@@ -23,7 +24,8 @@ export default function CommandFooter() {
   const cmdRef = useRef<HTMLDivElement>(null);
 
   const request = useMemo(() => currentRequest({ selectedPath: path, target, opt: { active, pinned: {} } }), [path, target, active]);
-  const key = requestKey(request);
+  // Secrets saved/deleted and catalog arrivals bump previewRev: same request, new preview.
+  const key = previewKey(request, previewRev);
 
   useEffect(() => {
     if (!request) {

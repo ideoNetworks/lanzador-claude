@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Claude 启动器"
+    "name": "Lanzador Claude"
   },
   "top": {
     "search": "搜索文件夹或项目…",
@@ -23,10 +23,6 @@
     "connecting": "正在连接引擎…",
     "connected": "已连接到引擎",
     "disconnected": "引擎不可用"
-  },
-  "placeholder": {
-    "title": "此页面暂不可用",
-    "body": "将在后续版本中完成。"
   },
   "common": {
     "close": "关闭",
@@ -87,7 +83,17 @@
     "tray_missing": "托盘图标不可用。",
     "skill_not_found": "在仓库中未找到该技能。",
     "parent_missing": "父文件夹不存在。",
-    "template_not_found": "未找到模板，已使用内置模板。"
+    "template_not_found": "未找到模板，已使用内置模板。",
+    "config_unreadable": "无法读取配置文件。",
+    "preview_stale": "预览已更改，请检查后再次点击“启动”。",
+    "image_type": "不支持的图片格式（请使用 SVG、PNG、ICO 或 JPG）。",
+    "image_too_large": "图片大于 2 MB。",
+    "skills_not_synced": "技能仓库尚未同步。"
+  },
+  "cfgError": {
+    "title": "无法读取配置",
+    "body": "config.json 存在但无法读取（可能被其他程序锁定或缺少权限）。为保护你的设置，在能够读取之前不会保存任何内容。",
+    "retry": "重试"
   },
   "tree": {
     "recent": "最近与收藏",
@@ -167,7 +173,8 @@
   "toast": {
     "launched": "已在 {path} 中启动 Claude",
     "copied": "命令已复制",
-    "secretSaved": "密钥已保存到凭据管理器"
+    "secretSaved": "密钥已保存到凭据管理器",
+    "previewStale": "预览已更改，请检查后再次点击“启动”"
   },
   "palette": {
     "label": "搜索文件夹",
@@ -218,6 +225,7 @@
     "shortcutHint": "点击输入框并按下所需组合键（需包含 Ctrl、Alt、Shift 或 Win）。",
     "shortcutPress": "请按下组合键…",
     "shortcutSaved": "快捷键已保存：{combo}",
+    "shortcutStartupFailed": "无法注册快捷键 {combo}。{reason}请另选一个。",
     "explorerMenu": "资源管理器“使用 Claude 打开”菜单",
     "explorerMenuHint": "在文件夹右键菜单中添加该选项（仅当前用户）。",
     "skills": "技能",
@@ -236,6 +244,11 @@
     "modeAuto": "自动",
     "modeNotify": "仅提醒",
     "modeManual": "手动",
+    "checkUpdates": "检查更新",
+    "checkNow": "立即检查",
+    "checkNowHint": "查找新版本但不安装；任何模式下均可使用。",
+    "checking": "正在检查…",
+    "upToDate": "已是最新版本",
     "endpoint": "更新地址（可选）",
     "endpointHint": "下次启动应用时生效。",
     "branding": "品牌",
@@ -271,7 +284,7 @@
     "logoAlt": "iDeo",
     "story": {
       "leadTitle": "一键启动 Claude Code",
-      "leadBody": "Claude 启动器是 Windows 上进入 Claude Code 的入口。选择项目文件夹，勾选 Claude 的启动方式，然后点击“启动”。启动器会在该文件夹中打开终端，并预先设置好环境变量和参数，无需记住选项，也无需输入路径。",
+      "leadBody": "Lanzador Claude 是 Windows 上进入 Claude Code 的入口。选择项目文件夹，勾选 Claude 的启动方式，然后点击“启动”。启动器会在该文件夹中打开终端，并预先设置好环境变量和参数，无需记住选项，也无需输入路径。",
       "whatTitle": "功能",
       "what1": "从你选择的根目录（默认 `C:\\Desarrollo`）浏览整个磁盘，并提供最近与收藏。",
       "what2": "以你的语言说明 Claude Code 的每个参数和环境变量。",
@@ -317,6 +330,8 @@
     "noRepo": "尚未配置技能仓库。",
     "configureRepo": "在设置中配置技能仓库",
     "noSkills": "仓库中没有技能。",
+    "notSynced": "技能仓库尚未同步。",
+    "goSync": "在“技能”中同步仓库",
     "loadingSkills": "正在加载技能…",
     "scope": "安装到",
     "scopeProject": "项目 (.claude/skills/)",
@@ -344,7 +359,9 @@
     "sync": "同步",
     "syncing": "正在同步…",
     "available": "仓库技能",
-    "none": "仓库中没有技能。请点击同步。",
+    "none": "仓库中没有技能。",
+    "notSynced": "同步仓库后即可查看其技能：请点击同步。",
+    "syncFailed": "上次同步失败：{error}",
     "target": "安装到",
     "targetProject": "所选项目",
     "targetGlobal": "全局 (~/.claude/skills)",

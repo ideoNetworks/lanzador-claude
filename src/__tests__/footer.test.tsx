@@ -8,13 +8,18 @@ vi.mock("../api", () => ({
   openVscode: vi.fn(),
   saveConfig: vi.fn(),
   refreshTray: vi.fn(),
+  secretHas: vi.fn(),
+  secretSet: vi.fn(),
+  secretDelete: vi.fn(),
 }));
 
 import * as api from "../api";
-import type { LaunchRequest } from "../api";
+import type { CatalogItem, LaunchRequest } from "../api";
 import { useStore } from "../store";
 import { setLanguage } from "../i18n";
 import CommandFooter from "../components/CommandFooter";
+import OptionRow from "../components/OptionRow";
+import { SECRET_VALUE } from "../logic/options";
 
 const mocked = vi.mocked(api);
 const PATH = "C:\\Proyectos\\José's app; v2";
@@ -56,7 +61,7 @@ describe("CommandFooter", () => {
     await waitFor(() => expect(startBtn().disabled).toBe(false));
     fireEvent.click(startBtn());
     await waitFor(() => expect(mocked.launch).toHaveBeenCalledTimes(1));
-    expect(mocked.launch).toHaveBeenCalledWith({ path: PATH, target: "powershell", selection: SEL, resumeId: null });
+    expect(mocked.launch).toHaveBeenCalledWith({ path: PATH, target: "powershell", selection: SEL, resumeId: null }, "claude --model opus");
     await waitFor(() => expect(useStore.getState().toast).toContain("José's app; v2"));
     expect(useStore.getState().toastCode).toBe("claude --model opus");
     await waitFor(() => expect(mocked.refreshTray).toHaveBeenCalled());
@@ -80,8 +85,34 @@ describe("CommandFooter", () => {
     expect(screen.getByText("new preview --verbose")).toBeTruthy();
     fireEvent.click(startBtn());
     await waitFor(() => expect(mocked.launch).toHaveBeenCalledTimes(1));
-    expect(mocked.launch).toHaveBeenCalledWith(pending[1].req);
+    expect(mocked.launch).toHaveBeenCalledWith(pending[1].req, "new preview --verbose");
     expect(pending[1].req.selection).toEqual({ ...SEL, "flag.verbose": null });
+  });
+
+  it("saving a secret for an already active row re-previews (same request, new command)", async () => {
+    const item: CatalogItem = {
+      id: "env.ANTHROPIC_API_KEY", kind: "env", key: "ANTHROPIC_API_KEY", group: "other", dangerous: false, fromHelp: false,
+      i18n: {}, value: { kind: "secret", options: [], fixed: null, placeholder: null, optional: false },
+    };
+    mocked.secretHas.mockResolvedValue(false);
+    mocked.secretSet.mockResolvedValue(undefined);
+    useStore.setState({ opt: { active: { ...SEL, [item.id]: SECRET_VALUE }, pinned: {} } });
+    const pending = deferredBuild();
+    render(<><CommandFooter /><OptionRow item={item} lang="es" /></>);
+    await waitFor(() => expect(pending).toHaveLength(1));
+    await act(async () => pending[0].resolve("PS> claude"));
+    await waitFor(() => expect(startBtn().disabled).toBe(false));
+
+    const field = screen.getByLabelText("ANTHROPIC_API_KEY");
+    fireEvent.change(field, { target: { value: "sk-ant-x" } });
+    fireEvent.blur(field);
+    await waitFor(() => expect(mocked.secretSet).toHaveBeenCalledWith("ANTHROPIC_API_KEY", "sk-ant-x"));
+    // the old preview no longer counts, and a new buildCommand runs for the same request
+    await waitFor(() => expect(startBtn().disabled).toBe(true));
+    await waitFor(() => expect(pending).toHaveLength(2));
+    expect(pending[1].req).toEqual(pending[0].req);
+    await act(async () => pending[1].resolve("PS> $env:ANTHROPIC_API_KEY = '••••'; claude"));
+    await waitFor(() => expect(startBtn().disabled).toBe(false));
   });
 
   it("an error preview keeps Iniciar disabled", async () => {

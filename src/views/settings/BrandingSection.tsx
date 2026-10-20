@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
+import { useImageDataUrl } from "../../components/useImageDataUrl";
 import * as api from "../../api";
 import type { Branding } from "../../api";
 import { useStore } from "../../store";
@@ -16,6 +16,7 @@ export default function BrandingSection() {
   const branding = useStore((s) => s.config?.branding);
   const saveConfig = useStore((s) => s.saveConfig);
   const showError = useStore((s) => s.showError);
+  const logoUrl = useImageDataUrl(branding?.logoPath);
   const [hex, setHex] = useState(branding?.primaryColor ?? "");
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => setHex(branding?.primaryColor ?? ""), [branding?.primaryColor]);
@@ -50,7 +51,7 @@ export default function BrandingSection() {
 
   const file = (label: string, path: string | null, key: "logoPath" | "trayIconPath", exts: string[], filterName: string) => (
     <Row label={label}>
-      {path && key === "logoPath" && <img className="thumb" src={convertFileSrc(path)} alt="" />}
+      {key === "logoPath" && logoUrl && <img className="thumb" src={logoUrl} alt="" />}
       <span className="path-box" title={path ?? undefined}>
         <bdi>{path ?? t("settings.brandingDefault")}</bdi>
       </span>

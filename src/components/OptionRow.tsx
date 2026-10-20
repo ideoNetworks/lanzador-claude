@@ -13,6 +13,8 @@ function SecretField({ item, onSaved }: { item: CatalogItem; onSaved: () => void
   const t = useT();
   const showError = useStore((s) => s.showError);
   const showToast = useStore((s) => s.showToast);
+  // A stored/deleted key changes the command without changing the request: re-preview.
+  const invalidatePreview = useStore((s) => s.invalidatePreview);
   const [stored, setStored] = useState(false);
   const [text, setText] = useState("");
 
@@ -30,6 +32,7 @@ function SecretField({ item, onSaved }: { item: CatalogItem; onSaved: () => void
     if (!value) return;
     api.secretSet(item.key, value).then(() => {
       setStored(true);
+      invalidatePreview();
       showToast(t("toast.secretSaved"));
       onSaved();
     }, showError);
@@ -54,7 +57,7 @@ function SecretField({ item, onSaved }: { item: CatalogItem; onSaved: () => void
           className="ibtn sm"
           title={t("opts.secretDelete")}
           aria-label={t("opts.secretDelete")}
-          onClick={() => api.secretDelete(item.key).then(() => setStored(false), showError)}
+          onClick={() => api.secretDelete(item.key).then(() => { setStored(false); invalidatePreview(); }, showError)}
         >
           {icons.x}
         </button>

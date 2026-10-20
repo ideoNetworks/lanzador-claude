@@ -19,4 +19,10 @@ export function requestKey(r: LaunchRequest | null): string {
   return JSON.stringify([r.path, r.target, r.resumeId ?? null, sel]);
 }
 
+/** Key of a preview: the request plus the store's `previewRev` (secrets, catalog version), so a
+ * change the request does not show still invalidates the preview on screen. */
+export function previewKey(r: LaunchRequest | null, rev: number): string {
+  return r ? `${requestKey(r)}#${rev}` : "";
+}
+
 export const truncate = (s: string, max: number) => (s.length <= max ? s : `${s.slice(0, max - 1)}…`);

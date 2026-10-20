@@ -1,7 +1,7 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import type { Lang, Target } from "../../api";
 import { useStore } from "../../store";
-import { getLanguage, setLanguage, useT } from "../../i18n";
+import { getLanguage, useT } from "../../i18n";
 import { Row, Section, Segmented, Switch } from "./parts";
 
 const TARGETS: Target[] = ["wt", "powershell", "wsl"];
@@ -11,6 +11,7 @@ export default function GeneralSection() {
   const config = useStore((s) => s.config);
   const saveConfig = useStore((s) => s.saveConfig);
   const showError = useStore((s) => s.showError);
+  const changeLanguage = useStore((s) => s.changeLanguage);
   if (!config) return null;
 
   const pickRoot = async () => {
@@ -29,11 +30,7 @@ export default function GeneralSection() {
           className="sel2"
           aria-label={t("settings.language")}
           value={getLanguage()}
-          onChange={(e) => {
-            const l = e.target.value as Lang;
-            setLanguage(l);
-            void saveConfig({ language: l });
-          }}
+          onChange={(e) => void changeLanguage(e.target.value as Lang)}
         >
           <option value="es">Español</option>
           <option value="en">English</option>

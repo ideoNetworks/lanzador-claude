@@ -1,11 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "./store";
 import { useT } from "./i18n";
 import TopBar from "./components/TopBar";
 import NavRail from "./components/NavRail";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
-import Placeholder from "./views/Placeholder";
 import ProfilesView from "./views/ProfilesView";
 import HistoryView from "./views/HistoryView";
 import SettingsView from "./views/SettingsView";
@@ -17,9 +16,33 @@ import UpdateBanner from "./components/UpdateBanner";
 import { useAppEvents } from "./integration/useAppEvents";
 import SearchPalette from "./components/SearchPalette";
 
-export default function App() {
+/** config.json exists but cannot be read (locked, permissions): nothing may be saved over it. */
+export function ConfigErrorBanner() {
   const t = useT();
   const load = useStore((s) => s.load);
+  const [busy, setBusy] = useState(false);
+  const retry = async () => {
+    setBusy(true);
+    try {
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="cfg-block" role="alertdialog" aria-modal="true" aria-labelledby="cfg-block-title">
+      <div className="card">
+        <h3 id="cfg-block-title">{t("cfgError.title")}</h3>
+        <p>{t("cfgError.body")}</p>
+        <button className="btn pri" disabled={busy} onClick={() => void retry()}>{t("cfgError.retry")}</button>
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const load = useStore((s) => s.load);
+  const configError = useStore((s) => s.configError);
   const view = useStore((s) => s.view);
   const theme = useStore((s) => s.config?.theme);
   const primary = useStore((s) => s.config?.branding.primaryColor);
@@ -58,16 +81,16 @@ export default function App() {
       <div className="body">
         <NavRail onAbout={() => useStore.getState().setAboutOpen(true)} />
         <main className="main">
-          {view === "launch" ? <LaunchView />
-            : view === "new" ? <NewProjectView />
+          {view === "new" ? <NewProjectView />
             : view === "skills" ? <SkillsView />
             : view === "profiles" ? <ProfilesView />
             : view === "history" ? <HistoryView />
             : view === "settings" ? <SettingsView />
-            : <Placeholder title={t(`nav.${view}`)} />}
+            : <LaunchView />}
         </main>
       </div>
       <StatusBar />
+      {configError && <ConfigErrorBanner />}
       <SearchPalette />
       <AboutDialog />
       <Toast />

@@ -22,8 +22,17 @@ describe("i18n", () => {
     for (const d of [e, n, z]) for (const [k, v] of Object.entries(d)) expect(v.trim(), k).not.toBe("");
   });
   it("includes all engine error codes", () => {
-    for (const c of ["path_not_found","access_denied","launch_failed","wt_not_found","invalid_key","secret_store_failed","io","git_missing","repo_url_empty","git_failed","invalid_name","already_exists"])
+    for (const c of ["path_not_found","access_denied","launch_failed","wt_not_found","invalid_key","secret_store_failed","io","git_missing","repo_url_empty","git_failed","invalid_name","already_exists",
+      "config_unreadable","preview_stale","image_type","image_too_large","skills_not_synced","update_failed","shortcut_taken","shortcut_invalid"])
       expect(flatten(es)[`errors.${c}`], c).toBeTruthy();
+  });
+  it("the product name is never translated", () => {
+    for (const d of [es, en, zh]) {
+      expect(d.app.name).toBe("Lanzador Claude");
+      expect(d.about.story.leadBody).toContain("Lanzador Claude");
+      const all = Object.values(flatten(d)).join("\n");
+      expect(all).not.toMatch(/Claude Launcher|Claude 启动器/);
+    }
   });
   it("t translates, interpolates and falls back to the key", () => {
     setLanguage("en");

@@ -5,6 +5,7 @@ import type { CreateResult, NewProjectRequest, SkillInfo, TemplateInfo } from ".
 import { useStore } from "../store";
 import { useT } from "../i18n";
 import { icons } from "../components/icons";
+import { errorText } from "../i18n/errors";
 import { nameError, warningText } from "../logic/project";
 
 const STEPS = ["name", "template", "skills", "options"] as const;
@@ -27,6 +28,8 @@ export default function NewProjectView() {
   const [description, setDescription] = useState("");
   const [stack, setStack] = useState("");
   const [skills, setSkills] = useState<SkillInfo[] | null>(null);
+  /** null: listed fine; "": repository never synced; otherwise the error text. */
+  const [skillsErr, setSkillsErr] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string[]>([]);
   const [scope, setScope] = useState<"project" | "global">("project");
   const [gitInit, setGitInit] = useState(true);
@@ -46,7 +49,14 @@ export default function NewProjectView() {
   useEffect(() => {
     if (!repoUrl) return void setSkills([]);
     let alive = true;
-    api.skillsList().then((l) => alive && setSkills(l), () => alive && setSkills([]));
+    api.skillsList().then(
+      (l) => { if (alive) { setSkills(l); setSkillsErr(null); } },
+      (e) => {
+        if (!alive) return;
+        setSkills([]);
+        setSkillsErr((e as { code?: string } | null)?.code === "skills_not_synced" ? "" : errorText(e));
+      },
+    );
     return () => { alive = false; };
   }, [repoUrl]);
 
@@ -194,6 +204,11 @@ export default function NewProjectView() {
             </div>
           ) : skills === null ? (
             <p className="hint">{t("wizard.loadingSkills")}</p>
+          ) : skills.length === 0 && skillsErr !== null ? (
+            <div className="empty-in">
+              <p>{skillsErr ? skillsErr : t("wizard.notSynced")}</p>
+              <button className="link" onClick={() => setView("skills")}>{t("wizard.goSync")}</button>
+            </div>
           ) : skills.length === 0 ? (
             <p className="hint">{t("wizard.noSkills")}</p>
           ) : (

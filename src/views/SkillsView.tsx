@@ -4,6 +4,7 @@ import type { InstalledSkill, SkillInfo } from "../api";
 import { useStore } from "../store";
 import { useT } from "../i18n";
 import { icons } from "../components/icons";
+import { errorText } from "../i18n/errors";
 
 export default function SkillsView() {
   const t = useT();
@@ -20,8 +21,19 @@ export default function SkillsView() {
   const [syncing, setSyncing] = useState(false);
   const [installing, setInstalling] = useState(false);
 
+  // Why the list is empty: never synced / last sync failed vs. a repository without skills.
+  const [notSynced, setNotSynced] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   const loadSkills = useCallback(async () => {
-    try { setSkills(await api.skillsList()); } catch { setSkills([]); }
+    try {
+      setSkills(await api.skillsList());
+      setNotSynced(false);
+    } catch (e) {
+      setSkills([]);
+      setNotSynced(true);
+      if ((e as { code?: string } | null)?.code !== "skills_not_synced") setSyncError(errorText(e));
+    }
   }, []);
   const loadInstalled = useCallback(async () => {
     if (!selectedPath) return setInstalled([]);
@@ -41,10 +53,12 @@ export default function SkillsView() {
     setSyncing(true);
     try {
       await api.skillsSync();
+      setSyncError(null);
       showToast(t("settings.synced"));
       await loadSkills();
       await loadInstalled();
     } catch (e) {
+      setSyncError(errorText(e));
       showError(e);
     } finally {
       setSyncing(false);
@@ -79,7 +93,7 @@ export default function SkillsView() {
   };
 
   const toggle = (name: string, on: boolean) => setChosen((c) => (on ? [...c, name] : c.filter((n) => n !== name)));
-  const isInstalled = (name: string) => installed.some((i) => i.name === name);
+  const installedOf = (name: string) => installed.find((i) => i.name === name);
 
   return (
     <section className="view">
@@ -111,7 +125,9 @@ export default function SkillsView() {
           <div className="sec">
             <h3>{t("skills.available")}</h3>
             {skills.length === 0 ? (
-              <div className="sec-empty">{t("skills.none")}</div>
+              <div className="sec-empty">
+                {syncError ? t("skills.syncFailed", { error: syncError }) : notSynced ? t("skills.notSynced") : t("skills.none")}
+              </div>
             ) : (
               <ul className="sk-rows">
                 {skills.map((s) => (
@@ -120,7 +136,9 @@ export default function SkillsView() {
                       <input type="checkbox" checked={chosen.includes(s.name)} onChange={(e) => toggle(s.name, e.target.checked)} />
                       <span><b>{s.name}</b><small>{s.description}</small></span>
                     </label>
-                    {isInstalled(s.name) && <span className="badge">{t("skills.upToDate")}</span>}
+                    {installedOf(s.name) && (installedOf(s.name)?.updateAvailable
+                      ? <span className="badge warn">{t("skills.updateAvailable")}</span>
+                      : <span className="badge">{t("skills.upToDate")}</span>)}
                   </li>
                 ))}
               </ul>

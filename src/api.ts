@@ -50,7 +50,9 @@ export const exportConfig = (path: string) => invoke<void>("export_config", { pa
 export const importConfig = (path: string) => invoke<AppConfig>("import_config", { path });
 export const getCatalog = (includeHelp: boolean) => invoke<CatalogItem[]>("get_catalog", { includeHelp });
 export const buildCommand = (req: LaunchRequest) => invoke<string>("build_command", { req });
-export const launch = (req: LaunchRequest) => invoke<HistoryEntry>("launch", { req });
+/** `expectedPreview` is the preview on screen: the engine refuses with `preview_stale` if a fresh plan differs. */
+export const launch = (req: LaunchRequest, expectedPreview: string | null = null) =>
+  invoke<HistoryEntry>("launch", { req, expectedPreview });
 export const listDir = (path: string, showHidden: boolean) => invoke<DirEntry[]>("list_dir", { path, showHidden });
 export const listRoots = () => invoke<DriveEntry[]>("list_roots");
 export const folderInfo = (path: string) => invoke<FolderInfo>("folder_info", { path });
@@ -78,3 +80,9 @@ export { errorText } from "./i18n/errors";
 export const takePendingOpen = () => invoke<string | null>("take_pending_open");
 export const updateInstall = () => invoke<void>("update_install");
 export const takePendingUpdate = () => invoke<{ version: string; notes: string | null } | null>("take_pending_update");
+/** Manual check: the update (if any) is reported, never installed. */
+export const updateCheck = () => invoke<{ version: string; notes: string | null } | null>("update_check");
+export const takeShortcutError = () => invoke<AppError | null>("take_shortcut_error");
+export const languageChanged = () => invoke<void>("language_changed");
+/** Branding image as a `data:` URL (svg/png/ico/jpg, max 2 MB). */
+export const readImageDataUrl = (path: string) => invoke<string>("read_image_data_url", { path });

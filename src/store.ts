@@ -1,13 +1,15 @@
 import { create } from "zustand";
 import * as api from "./api";
-import type { AppConfig, CatalogItem, LaunchRequest, Selection, Target, ViewId } from "./api";
+import type { AppConfig, AppError, CatalogItem, Lang, LaunchRequest, Selection, Target, ViewId } from "./api";
 import { initialActive, type OptState } from "./logic/checkboxes";
 import { detectLanguage, setLanguage, t } from "./i18n";
 import { errorText } from "./i18n/errors";
 import { sameSelection } from "./logic/options";
 import { applyProfile } from "./logic/selection";
 import { folderProfileKey } from "./logic/profiles";
-import { currentRequest, requestKey, truncate, type LaunchExtras } from "./logic/request";
+import { currentRequest, previewKey, truncate, type LaunchExtras } from "./logic/request";
+
+const errCode = (e: unknown) => (e && typeof e === "object" ? (e as { code?: unknown }).code : undefined);
 
 /** Pinned option changes are persisted after this quiet period (or on flush). */
 export const PINNED_SAVE_MS = 400;
@@ -41,8 +43,20 @@ interface State {
   /** Pending update announced by the engine (`update-available`). */
   update: { version: string; notes: string | null } | null;
   setUpdate: (u: { version: string; notes: string | null } | null) => void;
+  /** Bumped when something the preview depends on changes outside the request (secrets saved
+   * or deleted, engine refused a stale preview): the footer re-previews. */
+  previewRev: number;
+  invalidatePreview: () => void;
+  /** config.json exists but cannot be read: the UI is blocked until a retry reads it. */
+  configError: boolean;
+  /** Global shortcut that could not be registered at startup (inline error in Settings). */
+  shortcutError: AppError | null;
+  setShortcutError: (e: AppError | null) => void;
   load: () => Promise<void>;
-  saveConfig: (patch: Partial<AppConfig>) => Promise<void>;
+  /** Resolves true once saved (false: rolled back and reported). */
+  saveConfig: (patch: Partial<AppConfig>) => Promise<boolean>;
+  /** UI language change (TopBar / Settings): dictionary, config, then tray + Explorer menu text. */
+  changeLanguage: (lang: Lang) => Promise<void>;
   /** Replaces the whole config (import): language, target and options follow it. */
   replaceConfig: (config: AppConfig) => void;
   selectPath: (p: string | null) => void;
@@ -51,7 +65,7 @@ interface State {
   /** Sets the option state; pinned changes are persisted to config.pinned (debounced, see flushPinned). */
   updateOpt: (o: OptState) => void;
   /** Saves a pending pinned change now (blur / unmount / before launching). */
-  flushPinned: () => void;
+  flushPinned: () => Promise<void>;
   setDraft: (id: string, value: string | null) => void;
   setTarget: (t: Target) => void;
   setPaletteOpen: (open: boolean) => void;
@@ -91,21 +105,29 @@ export const useStore = create<State>((set, get) => ({
   launching: false,
   update: null,
   setUpdate: (update) => set({ update }),
+  previewRev: 0,
+  invalidatePreview: () => set((s) => ({ previewRev: s.previewRev + 1 })),
+  configError: false,
+  shortcutError: null,
+  setShortcutError: (shortcutError) => set({ shortcutError }),
 
   async load() {
     try {
       const config = await api.getConfig();
       const sys = await api.systemLocale().catch(() => "en");
       setLanguage(detectLanguage(config.language, sys));
-      set({ config, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
+      set({ config, configError: false, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
     } catch (e) {
-      get().showError(e);
+      if (errCode(e) === "config_unreadable") set({ configError: true });
+      else get().showError(e);
       return;
     }
     try {
-      set({ catalog: await api.getCatalog(false) });
+      // Each catalog arrival is a new version the engine plans against: re-preview.
+      const catalog = await api.getCatalog(false);
+      set((s) => ({ catalog, previewRev: s.previewRev + 1 }));
       // Flags discovered in `claude --help` can take a few seconds: merge them in afterwards.
-      void api.getCatalog(true).then((catalog) => set({ catalog })).catch(() => {});
+      void api.getCatalog(true).then((catalog) => set((s) => ({ catalog, previewRev: s.previewRev + 1 }))).catch(() => {});
     } catch (e) {
       get().showError(e);
     }
@@ -113,18 +135,29 @@ export const useStore = create<State>((set, get) => ({
 
   async saveConfig(patch) {
     const prev = get().config;
-    if (!prev) return;
+    if (!prev) return false;
     const next = { ...prev, ...patch };
     set({ config: next });
     try {
       await api.saveConfig(next);
+      return true;
     } catch (e) {
       set({ config: prev });
-      get().showError(e);
+      if (errCode(e) === "config_unreadable") set({ configError: true });
+      else get().showError(e);
+      return false;
     }
   },
 
+  async changeLanguage(lang) {
+    setLanguage(lang);
+    if (await get().saveConfig({ language: lang })) await api.languageChanged().catch(() => {});
+  },
+
   replaceConfig(config) {
+    // The imported pins replace the old ones: a pending pinned save must not write them back.
+    clearTimeout(pinnedTimer);
+    pinnedDirty = false;
     set({ config, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
     const code = (config.language ?? "").toLowerCase();
     if (code.startsWith("es") || code.startsWith("en") || code.startsWith("zh")) setLanguage(detectLanguage(config.language, "en"));
@@ -132,10 +165,12 @@ export const useStore = create<State>((set, get) => ({
   },
 
   selectPath(selectedPath) {
+    const changed = selectedPath !== get().selectedPath;
     set({ selectedPath });
-    // A folder with its own default profile applies it when chosen.
+    // A folder with its own default profile applies it when chosen (not when re-selected,
+    // which would wipe the options changed since).
     const { config, opt } = get();
-    if (!selectedPath || !config) return;
+    if (!changed || !selectedPath || !config) return;
     const key = folderProfileKey(config.folderProfiles ?? {}, selectedPath);
     const profile = key === undefined ? undefined : config.profiles.find((p) => p.id === config.folderProfiles[key]);
     if (!profile) return;
@@ -153,11 +188,11 @@ export const useStore = create<State>((set, get) => ({
     clearTimeout(pinnedTimer);
     pinnedTimer = setTimeout(() => get().flushPinned(), PINNED_SAVE_MS);
   },
-  flushPinned() {
+  async flushPinned() {
     clearTimeout(pinnedTimer);
     if (!pinnedDirty) return;
     pinnedDirty = false;
-    void get().saveConfig({ pinned: { ...get().opt.pinned } });
+    await get().saveConfig({ pinned: { ...get().opt.pinned } });
   },
   setDraft: (id, value) => set((s) => ({ drafts: { ...s.drafts, [id]: value } })),
   setTarget: (target) => set({ target }),
@@ -170,10 +205,11 @@ export const useStore = create<State>((set, get) => ({
   },
   async launchRequest(req, preview) {
     if (get().launching) return;
-    get().flushPinned();
     set({ launching: true });
     try {
-      await api.launch(req);
+      // The engine records the launch in config: the pinned save must land first, not race it.
+      await get().flushPinned();
+      await api.launch(req, preview);
       get().showToast(t("toast.launched", { path: req.path }), truncate(preview, TOAST_CODE_MAX));
       // The tray's "Recientes" menu reads config: refresh it (no tray in tests / errors ignored).
       void Promise.resolve()
@@ -187,7 +223,14 @@ export const useStore = create<State>((set, get) => ({
         /* keep the current config */
       }
     } catch (e) {
-      get().showError(e);
+      if (errCode(e) === "preview_stale") {
+        get().invalidatePreview();
+        get().showToast(t("toast.previewStale"));
+      } else if (errCode(e) === "config_unreadable") {
+        set({ configError: true });
+      } else {
+        get().showError(e);
+      }
     } finally {
       set({ launching: false });
     }
@@ -206,7 +249,8 @@ export const useStore = create<State>((set, get) => ({
   },
   async launchPreviewed() {
     const p = get().preview;
-    if (!p || p.error || p.key !== requestKey(currentRequest(get()))) return;
+    const s = get();
+    if (!p || p.error || p.key !== previewKey(currentRequest(s), s.previewRev)) return;
     await get().launchRequest(p.request, p.text);
   },
   setEngine: (engineUp, version) =>
