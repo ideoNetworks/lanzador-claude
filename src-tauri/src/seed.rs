@@ -72,6 +72,14 @@ mod tests {
     }
 
     #[test]
+    fn seed_parses_pairs() {
+        let got: std::collections::BTreeMap<_, _> = parse_pinned("flag.model=opus;flag.continue").into_iter().collect();
+        assert_eq!(got.get("flag.model"), Some(&Some("opus".to_string())));
+        assert_eq!(got.get("flag.continue"), Some(&None));
+        assert_eq!(got.len(), 2);
+    }
+
+    #[test]
     fn seed_apply_merges_profile_and_pinned() {
         let mut cfg = AppConfig::default();
         let seed = Seed {

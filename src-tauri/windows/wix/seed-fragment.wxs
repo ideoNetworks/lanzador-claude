@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lanzador Claude - first-run seed for MSI deployments.
+  Public properties (set on the msiexec command line, e.g. for silent installs):
+    AUTOSTART=0|1       start the app with Windows on first run (default 0)
+    PROFILE=safe|auto|ps-opus   initial profile (default: none)
+    PINNED="flag.verbose;env.DISABLE_TELEMETRY=1"   options pinned by default, "id[=value];..."
+  Writes HKCU\Software\iDeo\LanzadorClaude\Seed (Autostart DWORD, Profile SZ, Pinned SZ), the same
+  values the NSIS installer writes. Tauri's WiX package is perMachine, so HKCU is the HKCU of the
+  account running the installation (the elevated user).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <Property Id="AUTOSTART" Value="0" Secure="yes" />
+    <Property Id="PROFILE" Secure="yes" />
+    <Property Id="PINNED" Secure="yes" />
+
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="SeedRegistry" Guid="*">
+        <RegistryKey Root="HKCU" Key="Software\iDeo\LanzadorClaude\Seed" ForceDeleteOnUninstall="yes">
+          <RegistryValue Name="Autostart" Type="integer" Value="[AUTOSTART]" KeyPath="yes" />
+          <RegistryValue Name="Profile" Type="string" Value="[PROFILE]" />
+          <RegistryValue Name="Pinned" Type="string" Value="[PINNED]" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>
