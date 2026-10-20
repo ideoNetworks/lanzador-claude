@@ -46,7 +46,7 @@ pub fn repo_dir() -> PathBuf {
 
 // ---- git plumbing -------------------------------------------------------------------------
 
-fn base64(data: &[u8]) -> String {
+pub(crate) fn base64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
     for chunk in data.chunks(3) {
@@ -140,7 +140,8 @@ where
 }
 
 /// Clones or fast-forwards the skills repository. Returns `"cloned"` or `"updated"`.
-/// The token only appears in process arguments; the stored remote is always token-free.
+/// The token travels only in the git process environment (`GIT_CONFIG_*` http.extraHeader),
+/// never in argv or the stored remote, which is always token-free.
 pub fn sync(url: &str, token: Option<String>) -> AppResult<String> {
     sync_in(&repo_dir(), url, token.as_deref(), "git")
 }

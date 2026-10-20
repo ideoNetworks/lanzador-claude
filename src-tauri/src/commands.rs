@@ -19,14 +19,55 @@ pub fn ping() -> Pong {
 }
 
 /// First run (missing/recovered config): apply installer seed, mark first run done, save.
+/// An existing but unreadable file is reported as `config_unreadable` (and saves stay refused
+/// until a later call reads it fine).
 #[tauri::command]
 pub fn get_config() -> AppResult<AppConfig> {
-    config::load_or_init_from(&crate::paths::config_dir(), seed::read_seed())
+    config::load_or_init(seed::read_seed())
 }
 
 #[tauri::command]
 pub fn save_config(config: AppConfig) -> AppResult<()> {
     config::save(&config)
+}
+
+/// Largest image `read_image_data_url` accepts.
+pub const MAX_IMAGE_BYTES: u64 = 2 * 1024 * 1024;
+
+/// MIME type for the image extensions branding accepts.
+pub fn image_mime(path: &std::path::Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "ico" => "image/x-icon",
+        "jpg" | "jpeg" => "image/jpeg",
+        _ => return None,
+    })
+}
+
+/// Reads a branding image into a `data:` URL (svg/png/ico/jpg, at most 2 MB).
+pub fn image_data_url(path: &str) -> AppResult<String> {
+    let p = std::path::Path::new(path);
+    let mime = image_mime(p).ok_or_else(|| AppError::new("image_type", path.to_string()))?;
+    let meta = std::fs::metadata(p).map_err(|_| AppError::new("path_not_found", path.to_string()))?;
+    if !meta.is_file() {
+        return Err(AppError::new("path_not_found", path.to_string()));
+    }
+    if meta.len() > MAX_IMAGE_BYTES {
+        return Err(AppError::new("image_too_large", path.to_string()));
+    }
+    let bytes = std::fs::read(p)?;
+    if bytes.len() as u64 > MAX_IMAGE_BYTES {
+        return Err(AppError::new("image_too_large", path.to_string()));
+    }
+    Ok(format!("data:{mime};base64,{}", skills::base64(&bytes)))
+}
+
+/// Custom logo for the UI without the asset protocol (the CSP only allows `data:` images).
+#[tauri::command]
+pub async fn read_image_data_url(path: String) -> AppResult<String> {
+    blocking(move || image_data_url(&path)).await?
 }
 
 #[tauri::command]
@@ -147,40 +188,64 @@ impl CatalogCache {
     }
 }
 
-/// Resolves the plan for `req` against the cached (merged) catalog, else the embedded one.
+/// Resolves the plan for `req` against `items` (the cached merged catalog, else the embedded one).
 /// Previews never read secret values: a placeholder stands in for stored ones (always rendered masked).
-fn make_plan(cache: &CatalogCache, req: &LaunchRequest, reveal: bool) -> AppResult<LaunchPlan> {
-    let items = cache.items();
+fn make_plan(items: &[CatalogItem], req: &LaunchRequest, reveal: bool) -> AppResult<LaunchPlan> {
     if reveal {
-        command::plan(req, &items, &|k| secrets::get(k), command::detect_pwsh())
+        command::plan(req, items, &|k| secrets::get(k), command::detect_pwsh())
     } else {
-        command::plan(req, &items, &|k| secrets::has(k).then(String::new), command::detect_pwsh())
+        command::plan(req, items, &|k| secrets::has(k).then(String::new), command::detect_pwsh())
     }
 }
 
+/// Spec anti-goal: never launch something other than what the user saw. `expected` is the
+/// preview on screen; a different freshly planned preview means the UI must re-preview first.
+pub fn check_preview(expected: Option<&str>, actual: &str) -> AppResult<()> {
+    match expected {
+        Some(e) if e != actual => Err(AppError::new("preview_stale", actual.to_string())),
+        _ => Ok(()),
+    }
+}
+
+// Path checks, keyring reads and `where pwsh` can take seconds on a disconnected network drive:
+// planning and launching run on the blocking pool, never on the UI/main thread.
 #[tauri::command]
-pub fn build_command(cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<String> {
-    Ok(make_plan(&cache, &req, false)?.preview)
+pub async fn build_command(cache: tauri::State<'_, CatalogCache>, req: LaunchRequest) -> AppResult<String> {
+    let items = cache.items();
+    blocking(move || make_plan(&items, &req, false).map(|p| p.preview)).await?
 }
 
 #[tauri::command]
-pub fn launch(app: tauri::AppHandle, cache: tauri::State<CatalogCache>, req: LaunchRequest) -> AppResult<HistoryEntry> {
-    let plan = make_plan(&cache, &req, true)?;
-    launch::run(&plan)?;
-    let mut cfg = config::load();
-    let entry = HistoryEntry {
-        at: chrono::Local::now().to_rfc3339(),
-        path: req.path.clone(),
-        profile: cfg.active_profile.clone(),
-        target: req.target,
-        selection: req.selection.clone(),
-        preview: plan.preview,
-    };
-    config::push_recent(&mut cfg, &req.path);
-    config::push_history(&mut cfg, entry.clone());
-    crate::integration::save_and_notify(&app, &cfg)?;
-    crate::integration::tray::rebuild(&app);
-    Ok(entry)
+pub async fn launch(
+    app: tauri::AppHandle,
+    cache: tauri::State<'_, CatalogCache>,
+    req: LaunchRequest,
+    expected_preview: Option<String>,
+) -> AppResult<HistoryEntry> {
+    let items = cache.items();
+    blocking(move || {
+        // Recents/history must be storable before anything is started.
+        config::ensure_readable()?;
+        let plan = make_plan(&items, &req, true)?;
+        check_preview(expected_preview.as_deref(), &plan.preview)?;
+        launch::run(&plan)?;
+        let entry = crate::integration::update_and_notify(&app, |cfg| {
+            let entry = HistoryEntry {
+                at: chrono::Local::now().to_rfc3339(),
+                path: req.path.clone(),
+                profile: cfg.active_profile.clone(),
+                target: req.target,
+                selection: req.selection.clone(),
+                preview: plan.preview.clone(),
+            };
+            config::push_recent(cfg, &req.path);
+            config::push_history(cfg, entry.clone());
+            Ok(entry)
+        })?;
+        crate::integration::tray::rebuild(&app);
+        Ok(entry)
+    })
+    .await?
 }
 
 // Filesystem commands run on the blocking pool so a slow or disconnected network drive
@@ -297,8 +362,8 @@ fn require_dir(path: &str) -> AppResult<()> {
 /// Opens VS Code on `path` through `cmd /C code` (the `code` shim is a batch file), no console window.
 #[tauri::command]
 pub async fn open_vscode(path: String) -> AppResult<()> {
-    require_dir(&path)?;
     blocking(move || {
+        require_dir(&path)?;
         let mut cmd = std::process::Command::new("cmd");
         cmd.stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
@@ -321,17 +386,20 @@ pub async fn open_vscode(path: String) -> AppResult<()> {
 
 /// Opens `path` in Windows Explorer (explorer.exe always exits with 1, so only spawn errors count).
 #[tauri::command]
-pub fn open_explorer(path: String) -> AppResult<()> {
-    require_dir(&path)?;
-    let mut cmd = std::process::Command::new("explorer.exe");
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.raw_arg(explorer_arg(&path));
-    }
-    #[cfg(not(windows))]
-    cmd.arg(&path);
-    cmd.spawn().map(|_| ()).map_err(|e| AppError::new("launch_failed", e.to_string()))
+pub async fn open_explorer(path: String) -> AppResult<()> {
+    blocking(move || {
+        require_dir(&path)?;
+        let mut cmd = std::process::Command::new("explorer.exe");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.raw_arg(explorer_arg(&path));
+        }
+        #[cfg(not(windows))]
+        cmd.arg(&path);
+        cmd.spawn().map(|_| ()).map_err(|e| AppError::new("launch_failed", e.to_string()))
+    })
+    .await?
 }
 
 #[cfg(all(test, windows))]
@@ -377,6 +445,51 @@ mod open_tests {
         assert_eq!(vscode_cmdline(r"C:\Desarrollo\x/"), r#"/D /S /C "code "C:\Desarrollo\x"""#);
         assert_eq!(vscode_cmdline(r"C:\"), r#"/D /S /C "code "C:\."""#);
         assert_eq!(vscode_cmdline("D:"), r#"/D /S /C "code "D:\."""#);
+    }
+
+    #[test]
+    fn stale_preview_is_refused() {
+        assert!(check_preview(None, "PS C:\\x> claude").is_ok());
+        assert!(check_preview(Some("PS C:\\x> claude"), "PS C:\\x> claude").is_ok());
+        let e = check_preview(Some("PS C:\\x> claude"), "PS C:\\x> $env:ANTHROPIC_API_KEY = '••••'; claude").unwrap_err();
+        assert_eq!(e.code, "preview_stale");
+    }
+
+    #[test]
+    fn secret_saved_after_preview_makes_it_stale() {
+        // The row was previewed while no key was stored; the key is saved before Launch.
+        let tmp = tempfile::tempdir().unwrap();
+        let req = LaunchRequest {
+            path: tmp.path().to_string_lossy().into_owned(),
+            target: crate::config::Target::Powershell,
+            selection: [("env.ANTHROPIC_API_KEY".to_string(), None)].into_iter().collect(),
+            resume_id: None,
+        };
+        let items = catalog::load_embedded();
+        let shown = command::plan_in(tmp.path(), &req, &items, &|_| None, "pwsh").unwrap().preview;
+        let now = command::plan_in(tmp.path(), &req, &items, &|_| Some("sk-x".into()), "pwsh").unwrap().preview;
+        assert_eq!(check_preview(Some(&shown), &now).unwrap_err().code, "preview_stale");
+        assert!(check_preview(Some(&now), &now).is_ok());
+    }
+
+    #[test]
+    fn image_data_url_rules() {
+        let d = tempfile::tempdir().unwrap();
+        let svg = d.path().join("logo.SVG");
+        std::fs::write(&svg, "<svg/>").unwrap();
+        assert_eq!(image_data_url(&svg.to_string_lossy()).unwrap(), "data:image/svg+xml;base64,PHN2Zy8+");
+        let png = d.path().join("a.png");
+        std::fs::write(&png, [0x89, b'P', b'N', b'G']).unwrap();
+        assert!(image_data_url(&png.to_string_lossy()).unwrap().starts_with("data:image/png;base64,"));
+        assert_eq!(image_mime(std::path::Path::new("x.ico")), Some("image/x-icon"));
+        assert_eq!(image_mime(std::path::Path::new("x.jpg")), Some("image/jpeg"));
+        let exe = d.path().join("a.exe");
+        std::fs::write(&exe, "MZ").unwrap();
+        assert_eq!(image_data_url(&exe.to_string_lossy()).unwrap_err().code, "image_type");
+        assert_eq!(image_data_url(&d.path().join("missing.png").to_string_lossy()).unwrap_err().code, "path_not_found");
+        let big = d.path().join("big.png");
+        std::fs::write(&big, vec![0u8; (MAX_IMAGE_BYTES + 1) as usize]).unwrap();
+        assert_eq!(image_data_url(&big.to_string_lossy()).unwrap_err().code, "image_too_large");
     }
 
     #[test]

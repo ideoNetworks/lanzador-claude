@@ -50,11 +50,24 @@ pub fn normalize_open_path(p: &str) -> String {
     }
 }
 
-/// Saves the config from the engine side and tells the UI (`config-changed`) so it does not write back a stale copy.
-pub fn save_and_notify(app: &AppHandle, cfg: &config::AppConfig) -> AppResult<()> {
-    config::save(cfg)?;
-    let _ = app.emit("config-changed", cfg);
-    Ok(())
+/// Locked load-modify-save from the engine side; tells the UI (`config-changed`) so it does not
+/// write back a stale copy.
+pub fn update_and_notify<T>(
+    app: &AppHandle,
+    f: impl FnOnce(&mut config::AppConfig) -> AppResult<T>,
+) -> AppResult<T> {
+    let (cfg, out) = config::update(f)?;
+    let _ = app.emit("config-changed", &cfg);
+    Ok(out)
+}
+
+/// Startup failure registering the global shortcut (taken once by the UI on mount).
+#[derive(Default)]
+pub struct ShortcutError(pub Mutex<Option<AppError>>);
+
+#[tauri::command]
+pub fn take_shortcut_error(app: AppHandle) -> Option<AppError> {
+    app.state::<ShortcutError>().0.lock().ok().and_then(|mut g| g.take())
 }
 
 /// Update announced before the UI was listening (taken once on mount).
@@ -131,9 +144,10 @@ pub fn apply_autostart(app: &AppHandle, enabled: bool) -> AppResult<()> {
     let mgr = app.autolaunch();
     let res = if enabled { mgr.enable() } else { mgr.disable() };
     res.map_err(|e| AppError::new("autostart_failed", e.to_string()))?;
-    let mut cfg = config::load();
-    cfg.autostart = enabled;
-    save_and_notify(app, &cfg)
+    update_and_notify(app, |cfg| {
+        cfg.autostart = enabled;
+        Ok(())
+    })
 }
 
 #[tauri::command]

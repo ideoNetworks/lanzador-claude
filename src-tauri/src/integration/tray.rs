@@ -132,13 +132,28 @@ fn on_menu(app: &AppHandle, id: &str) {
 }
 
 fn set_language(app: &AppHandle, code: &str) {
-    let mut cfg = config::load();
-    cfg.language = Some(code.to_string());
-    if super::save_and_notify(app, &cfg).is_ok() {
+    let saved = super::update_and_notify(app, |cfg| {
+        cfg.language = Some(code.to_string());
+        Ok(())
+    });
+    if saved.is_ok() {
         let _ = app.emit("language-changed", code);
-        super::explorer::refresh_if_enabled();
-        rebuild(app);
+        language_changed_effects(app);
     }
+}
+
+/// Everything outside the UI that shows translated text: Explorer menu and tray.
+pub fn language_changed_effects(app: &AppHandle) {
+    super::explorer::refresh_if_enabled();
+    rebuild(app);
+}
+
+/// The UI changed `config.language` (TopBar / Settings): refresh tray and Explorer menu text.
+#[tauri::command]
+pub async fn language_changed(app: AppHandle) -> AppResult<()> {
+    tauri::async_runtime::spawn_blocking(move || language_changed_effects(&app))
+        .await
+        .map_err(|e| AppError::new("io", e.to_string()))
 }
 
 /// Creates the tray icon (once, at startup).

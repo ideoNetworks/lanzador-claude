@@ -176,6 +176,11 @@ fn script_text(path: &str, envs: &[EnvVar], args: &[String]) -> String {
     lines.join("\r\n") + "\r\n"
 }
 
+/// WSL script line before `exec`: without `claude` on the WSL PATH the tab would just close;
+/// explain it and keep a login shell open instead.
+pub const WSL_GUARD: &str =
+    r#"command -v claude >/dev/null 2>&1 || { echo "claude no está en el PATH de WSL"; exec bash -l; }"#;
+
 /// Builds the plan using the real launch directory.
 pub fn plan(
     req: &LaunchRequest,
@@ -207,7 +212,7 @@ pub fn plan_in(
         line.extend(env_toks);
         line.push("claude".into());
         line.extend(args.iter().map(|a| sh_quote(a)));
-        let script = format!("rm -f -- \"$0\"\n{}\n", line.join(" "));
+        let script = format!("rm -f -- \"$0\"\n{WSL_GUARD}\n{}\n", line.join(" "));
         let mut parts = vec!["env".to_string()];
         parts.extend(envs.iter().map(|e| {
             if e.secret { format!("{}={MASK}", e.key) } else { sh_quote(&format!("{}={}", e.key, e.value)) }
@@ -384,12 +389,15 @@ mod tests {
         );
         let p = plan_t(&r, tmp.path());
         let s = p.script.clone().unwrap();
-        let line = s.lines().nth(1).unwrap();
+        let line = s.lines().nth(2).unwrap();
         for v in ["'x;id'", "'a b$(x)'", "'it'\\''s'"] {
             assert!(line.contains(v), "{line}");
         }
         assert!(line.starts_with("exec env DISABLE_TELEMETRY=1 claude "), "{line}");
         assert_eq!(s.lines().next().unwrap(), "rm -f -- \"$0\"");
+        // guard before exec: missing claude explains itself and leaves a shell open
+        assert_eq!(s.lines().nth(1).unwrap(), WSL_GUARD);
+        assert_eq!(s.lines().count(), 3);
         assert_eq!(p.program, "wt.exe");
         let d = dir.to_string_lossy().into_owned().replace(';', "\\;");
         let sp = to_wsl_path(p.script_path.as_ref().unwrap()).replace(';', "\\;");

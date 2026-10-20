@@ -31,6 +31,7 @@ pub fn run() {
         .manage(commands::CatalogCache::default())
         .manage(integration::PendingOpen::default())
         .manage(integration::PendingUpdate::default())
+        .manage(integration::ShortcutError::default())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event
                 && window.label() == integration::MAIN && config::load().close_to_tray
@@ -52,8 +53,13 @@ pub fn run() {
                 });
                 return Ok(());
             }
-            let cfg = config::load_or_init_from(&paths::config_dir(), seed::read_seed()).unwrap_or_else(|_| config::load());
+            // Unreadable config: defaults in memory only (saves stay refused until the UI retries).
+            let cfg = config::load_or_init(seed::read_seed()).unwrap_or_default();
             integration::ensure_autostart(&handle, &cfg);
+            // Reinstalls and imported configs: make the Explorer keys match the config.
+            if cfg.explorer_menu {
+                let _ = integration::explorer::apply(true);
+            }
             let _ = integration::tray::create(&handle);
             integration::shortcut::register_from_config(&handle);
             integration::handle_args(&handle, &args);
@@ -92,6 +98,10 @@ pub fn run() {
             integration::shortcut::set_shortcut,
             integration::explorer::set_explorer_menu,
             integration::notify::notify,
+            integration::take_shortcut_error,
+            integration::tray::language_changed,
+            commands::read_image_data_url,
+            integration::updater::update_check,
             integration::updater::update_install
         ])
         .run(tauri::generate_context!())

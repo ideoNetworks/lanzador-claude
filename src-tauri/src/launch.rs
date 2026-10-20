@@ -50,13 +50,13 @@ pub fn sweep_stale(dir: &Path) {
     sweep_older_than(dir, STALE_AFTER);
 }
 
-/// Writes the script (if any) and spawns the program detached, without waiting for it.
-/// If the spawn fails the script is removed again.
 /// Variables of a parent Claude Code session that must not leak into a fresh one.
 pub fn stripped_env_vars() -> &'static [&'static str] {
     &["CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT"]
 }
 
+/// Writes the script (if any) and spawns the program detached, without waiting for it.
+/// If the spawn fails the script is removed again.
 pub fn run(plan: &LaunchPlan) -> AppResult<()> {
     if let (Some(content), Some(path)) = (&plan.script, &plan.script_path) {
         write_script(Path::new(path), content)?;

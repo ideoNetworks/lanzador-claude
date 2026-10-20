@@ -64,6 +64,14 @@ pub fn check_on_startup(app: AppHandle) {
     });
 }
 
+/// Manual check ("Buscar actualizaciones", any mode): reports the update, never installs it.
+#[tauri::command]
+pub async fn update_check(app: AppHandle) -> AppResult<Option<UpdateInfo>> {
+    let fail = |e: tauri_plugin_updater::Error| AppError::new("update_failed", e.to_string());
+    let update = updater(&app).map_err(fail)?.check().await.map_err(fail)?;
+    Ok(update.map(|u| UpdateInfo { version: u.version.clone(), notes: u.body.clone() }))
+}
+
 /// Downloads, installs and restarts.
 #[tauri::command]
 pub async fn update_install(app: AppHandle) -> AppResult<()> {

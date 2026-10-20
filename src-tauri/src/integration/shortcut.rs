@@ -1,7 +1,7 @@
 //! Global shortcut that toggles the main window.
 use std::str::FromStr;
 
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 use crate::config;
@@ -23,15 +23,28 @@ fn register(app: &AppHandle, combo: &str) -> AppResult<()> {
         .map_err(|e| AppError::new("shortcut_taken", e.to_string()))
 }
 
-/// Registers the configured shortcut at startup; failure is non-fatal.
+/// Error reported for a failed startup registration: the combo travels in `message`.
+pub fn startup_error(combo: &str, e: AppError) -> AppError {
+    let code = if e.code == "shortcut_invalid" { "shortcut_invalid" } else { "shortcut_taken" };
+    AppError::new(code, combo.to_string())
+}
+
+/// Registers the configured shortcut at startup. Failure is non-fatal but not silent: it is
+/// kept for `take_shortcut_error` and announced with `shortcut-failed`.
 pub fn register_from_config(app: &AppHandle) {
-    let _ = register(app, &config::load().shortcut);
+    let combo = config::load().shortcut;
+    if let Err(e) = register(app, &combo) {
+        let err = startup_error(&combo, e);
+        if let Ok(mut g) = app.state::<super::ShortcutError>().0.lock() {
+            *g = Some(err.clone());
+        }
+        let _ = app.emit("shortcut-failed", err);
+    }
 }
 
 #[tauri::command]
 pub fn set_shortcut(app: AppHandle, shortcut: String) -> AppResult<()> {
-    let mut cfg = config::load();
-    let old = cfg.shortcut.clone();
+    let old = config::load().shortcut;
     let gs = app.global_shortcut();
     if let Ok(o) = parse(&old) {
         let _ = gs.unregister(o);
@@ -40,8 +53,13 @@ pub fn set_shortcut(app: AppHandle, shortcut: String) -> AppResult<()> {
         let _ = register(&app, &old);
         return Err(if e.code == "shortcut_invalid" { e } else { AppError::new("shortcut_taken", e.message) });
     }
-    cfg.shortcut = shortcut;
-    super::save_and_notify(&app, &cfg)
+    if let Ok(mut g) = app.state::<super::ShortcutError>().0.lock() {
+        *g = None;
+    }
+    super::update_and_notify(&app, |cfg| {
+        cfg.shortcut = shortcut;
+        Ok(())
+    })
 }
 
 #[cfg(test)]
@@ -53,5 +71,13 @@ mod tests {
         assert!(parse("Ctrl+Alt+I").is_ok());
         assert!(parse("Ctrl+Shift+F12").is_ok());
         assert!(parse("not a combo").is_err());
+    }
+
+    #[test]
+    fn startup_error_keeps_kind_and_names_the_combo() {
+        let e = startup_error("Ctrl+Alt+I", AppError::new("shortcut_taken", "HotKey already registered"));
+        assert_eq!((e.code.as_str(), e.message.as_str()), ("shortcut_taken", "Ctrl+Alt+I"));
+        let e = startup_error("nope", parse("nope").unwrap_err());
+        assert_eq!(e.code, "shortcut_invalid");
     }
 }

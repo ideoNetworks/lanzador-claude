@@ -1,6 +1,8 @@
 //! Persistent app configuration (`config.json`).
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, MutexGuard};
 
 use serde::{Deserialize, Serialize};
 
@@ -213,12 +215,114 @@ pub fn save_to(dir: &Path, config: &AppConfig) -> AppResult<()> {
     Ok(())
 }
 
+/// Serialises every config load / load-modify-save of the process and remembers whether the
+/// last load hit a read error, in which case saving is refused so defaults never overwrite
+/// the real (temporarily unreadable) file.
+pub struct ConfigStore {
+    lock: Mutex<()>,
+    unreadable: AtomicBool,
+}
+
+impl Default for ConfigStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+fn unreadable_err() -> AppError {
+    AppError::new("config_unreadable", "config.json exists but cannot be read")
+}
+
+impl ConfigStore {
+    pub const fn new() -> Self {
+        Self { lock: Mutex::new(()), unreadable: AtomicBool::new(false) }
+    }
+
+    fn guard(&self) -> MutexGuard<'_, ()> {
+        self.lock.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
+    fn note(&self, outcome: LoadOutcome) {
+        self.unreadable.store(outcome == LoadOutcome::ReadError, Ordering::SeqCst);
+    }
+
+    /// True while the last load could not read the file.
+    pub fn is_unreadable(&self) -> bool {
+        self.unreadable.load(Ordering::SeqCst)
+    }
+
+    /// `Err(config_unreadable)` while the last load could not read the file.
+    pub fn ensure_readable(&self) -> AppResult<()> {
+        if self.is_unreadable() { Err(unreadable_err()) } else { Ok(()) }
+    }
+
+    /// Loads (defaults on any problem) and records the outcome.
+    pub fn load(&self, dir: &Path) -> AppConfig {
+        let _g = self.guard();
+        let (cfg, outcome) = load_outcome_from(dir);
+        self.note(outcome);
+        cfg
+    }
+
+    /// [`load_or_init_from`] under the lock; a read error is returned as `config_unreadable`.
+    pub fn load_or_init(&self, dir: &Path, seed: Option<crate::seed::Seed>) -> AppResult<AppConfig> {
+        let _g = self.guard();
+        let (mut cfg, outcome) = load_outcome_from(dir);
+        self.note(outcome);
+        if outcome == LoadOutcome::ReadError {
+            return Err(unreadable_err());
+        }
+        if !cfg.first_run_done {
+            if let Some(s) = seed {
+                crate::seed::apply(&mut cfg, s);
+            }
+            cfg.first_run_done = true;
+            save_to(dir, &cfg)?;
+        }
+        Ok(cfg)
+    }
+
+    /// Saves `config`, refused while the file is unreadable.
+    pub fn save(&self, dir: &Path, config: &AppConfig) -> AppResult<()> {
+        let _g = self.guard();
+        self.ensure_readable()?;
+        save_to(dir, config)
+    }
+
+    /// Load-modify-save as one step. `f` returning `Err` leaves the file untouched.
+    pub fn update<T>(&self, dir: &Path, f: impl FnOnce(&mut AppConfig) -> AppResult<T>) -> AppResult<(AppConfig, T)> {
+        let _g = self.guard();
+        let (mut cfg, outcome) = load_outcome_from(dir);
+        self.note(outcome);
+        self.ensure_readable()?;
+        let out = f(&mut cfg)?;
+        save_to(dir, &cfg)?;
+        Ok((cfg, out))
+    }
+}
+
+/// The process-wide store used for the real config directory.
+pub static STORE: ConfigStore = ConfigStore::new();
+
 pub fn load() -> AppConfig {
-    load_from(&paths::config_dir())
+    STORE.load(&paths::config_dir())
+}
+
+pub fn load_or_init(seed: Option<crate::seed::Seed>) -> AppResult<AppConfig> {
+    STORE.load_or_init(&paths::config_dir(), seed)
 }
 
 pub fn save(config: &AppConfig) -> AppResult<()> {
-    save_to(&paths::config_dir(), config)
+    STORE.save(&paths::config_dir(), config)
+}
+
+/// Locked load-modify-save of the real config.
+pub fn update<T>(f: impl FnOnce(&mut AppConfig) -> AppResult<T>) -> AppResult<(AppConfig, T)> {
+    STORE.update(&paths::config_dir(), f)
+}
+
+pub fn ensure_readable() -> AppResult<()> {
+    STORE.ensure_readable()
 }
 
 /// Newest first, case-insensitive dedup (keeps newest spelling), capped at 10.
@@ -294,6 +398,68 @@ mod tests {
         // and first-run init must not try to overwrite it
         let _ = load_or_init_from(d.path(), None);
         assert!(d.path().join("config.json").is_dir());
+    }
+
+    #[test]
+    fn unreadable_config_blocks_saves_until_a_good_load() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new();
+        std::fs::create_dir(d.path().join("config.json")).unwrap();
+        assert_eq!(store.load_or_init(d.path(), None).unwrap_err().code, "config_unreadable");
+        assert!(store.is_unreadable());
+        let c = AppConfig { language: Some("en".into()), ..AppConfig::default() };
+        assert_eq!(store.save(d.path(), &c).unwrap_err().code, "config_unreadable");
+        let upd = store.update(d.path(), |cfg| {
+            cfg.autostart = true;
+            Ok(())
+        });
+        assert_eq!(upd.unwrap_err().code, "config_unreadable");
+        assert!(d.path().join("config.json").is_dir(), "real file untouched");
+        // the file becomes readable again: a retry clears the flag and saving works
+        std::fs::remove_dir(d.path().join("config.json")).unwrap();
+        std::fs::write(d.path().join("config.json"), r#"{"firstRunDone":true,"rootFolder":"D:\\R"}"#).unwrap();
+        let ok = store.load_or_init(d.path(), None).unwrap();
+        assert_eq!(ok.root_folder, r"D:\R");
+        assert!(!store.is_unreadable());
+        store.save(d.path(), &c).unwrap();
+        assert_eq!(load_from(d.path()).language.as_deref(), Some("en"));
+    }
+
+    #[test]
+    fn update_is_serialised_across_threads() {
+        let d = tempfile::tempdir().unwrap();
+        let store = std::sync::Arc::new(ConfigStore::new());
+        save_to(d.path(), &AppConfig::default()).unwrap();
+        let dir = d.path().to_path_buf();
+        let handles: Vec<_> = (0..8)
+            .map(|i| {
+                let (s, dir) = (store.clone(), dir.clone());
+                std::thread::spawn(move || {
+                    s.update(&dir, |c| {
+                        push_recent(c, &format!(r"C:\p{i}"));
+                        Ok(())
+                    })
+                    .unwrap();
+                })
+            })
+            .collect();
+        for h in handles {
+            h.join().unwrap();
+        }
+        assert_eq!(load_from(d.path()).recents.len(), 8, "no lost update");
+    }
+
+    #[test]
+    fn update_error_leaves_file_untouched() {
+        let d = tempfile::tempdir().unwrap();
+        let store = ConfigStore::new();
+        save_to(d.path(), &AppConfig::default()).unwrap();
+        let r = store.update(d.path(), |c| -> AppResult<()> {
+            c.autostart = true;
+            Err(AppError::new("x", "no"))
+        });
+        assert!(r.is_err());
+        assert!(!load_from(d.path()).autostart);
     }
 
     #[test]
