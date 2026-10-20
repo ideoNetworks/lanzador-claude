@@ -46,9 +46,9 @@ pub fn register_from_config(app: &AppHandle) {
 pub fn set_shortcut(app: AppHandle, shortcut: String) -> AppResult<()> {
     let old = config::load().shortcut;
     let gs = app.global_shortcut();
-    if let Ok(o) = parse(&old) {
-        let _ = gs.unregister(o);
-    }
+    // This app registers only this one shortcut. After an import the config already holds the
+    // new combo while the previous one is still registered, so clear everything, not just `old`.
+    let _ = gs.unregister_all();
     if let Err(e) = register(&app, &shortcut) {
         let _ = register(&app, &old);
         return Err(if e.code == "shortcut_invalid" { e } else { AppError::new("shortcut_taken", e.message) });

@@ -226,6 +226,15 @@ pub fn list() -> Vec<SkillInfo> {
     list_in(&repo_dir())
 }
 
+/// Lists the synced repository's skills; `skills_not_synced` when it was never cloned (or the
+/// last clone failed), so the UI can tell that apart from a repository without skills.
+pub fn list_synced_in(repo: &Path) -> AppResult<Vec<SkillInfo>> {
+    if !repo.join(".git").exists() {
+        return Err(AppError::new("skills_not_synced", repo.to_string_lossy().into_owned()));
+    }
+    Ok(list_in(repo))
+}
+
 pub fn list_in(repo: &Path) -> Vec<SkillInfo> {
     sorted_subdirs(&repo.join("skills"))
         .into_iter()
@@ -504,6 +513,16 @@ mod tests {
         assert_eq!(l[1].description, "Quoted desc");
         assert_eq!(l[0].hash.len(), 16);
         assert!(list_in(&tmp.path().join("missing")).is_empty());
+    }
+
+    #[test]
+    fn never_synced_differs_from_no_skills() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(list_synced_in(tmp.path()).unwrap_err().code, "skills_not_synced");
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        assert!(list_synced_in(tmp.path()).unwrap().is_empty());
+        skill(tmp.path(), "alpha", "Plain desc", "x");
+        assert_eq!(list_synced_in(tmp.path()).unwrap().len(), 1);
     }
 
     #[test]

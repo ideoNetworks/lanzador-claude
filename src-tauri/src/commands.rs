@@ -297,8 +297,8 @@ pub async fn skills_sync() -> AppResult<String> {
 }
 
 #[tauri::command]
-pub async fn skills_list() -> Vec<skills::SkillInfo> {
-    blocking(skills::list).await.unwrap_or_default()
+pub async fn skills_list() -> AppResult<Vec<skills::SkillInfo>> {
+    blocking(|| skills::list_synced_in(&skills::repo_dir())).await?
 }
 
 #[tauri::command]
