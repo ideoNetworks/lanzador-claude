@@ -1,0 +1,22 @@
+/* Design tokens from the approved mockup (Docker Desktop style). Light default; dark via data-theme or system. */
+:root {
+  --primary: #006EB3; --primary-ink: #ffffff; --primary-soft: #e3f0f9; --pin: #7B3FE4; --pin-soft: #efe8fd;
+  --bg: #eef2f6; --surface: #ffffff; --surface-2: #f6f8fb; --line: #dde3ea; --line-soft: #edf1f5;
+  --fg: #1b2533; --muted: #5d6b7c; --faint: #94a1b1; --warn: #b45309; --ok: #047857; --ok-soft: #e6f6ef; --err: #b42318;
+  --code-bg: #0e1726; --code-fg: #9fd2ff; --tip-bg: #1b2533; --tip-fg: #ffffff; --shadow: 0 10px 30px rgba(16, 40, 70, .12);
+  --f-ui: "Roboto", "Segoe UI", system-ui, sans-serif; --f-mono: "Roboto Mono", Consolas, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --primary: #2b8fd6; --primary-ink: #ffffff; --primary-soft: #163049; --pin: #9a6bff; --pin-soft: #2a2245;
+    --bg: #121821; --surface: #1a222d; --surface-2: #202a37; --line: #2c3847; --line-soft: #243040;
+    --fg: #e5ebf2; --muted: #9aa8b8; --faint: #6b7a8c; --warn: #f0a050; --ok: #4cc69a; --ok-soft: #173a2f; --err: #f97066;
+    --code-bg: #0a1018; --code-fg: #9fd2ff; --tip-bg: #e5ebf2; --tip-fg: #121821; --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --primary: #2b8fd6; --primary-ink: #ffffff; --primary-soft: #163049; --pin: #9a6bff; --pin-soft: #2a2245;
+  --bg: #121821; --surface: #1a222d; --surface-2: #202a37; --line: #2c3847; --line-soft: #243040;
+  --fg: #e5ebf2; --muted: #9aa8b8; --faint: #6b7a8c; --warn: #f0a050; --ok: #4cc69a; --ok-soft: #173a2f; --err: #f97066;
+  --code-bg: #0a1018; --code-fg: #9fd2ff; --tip-bg: #e5ebf2; --tip-fg: #121821; --shadow: 0 10px 30px rgba(0, 0, 0, .45); color-scheme: dark;
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Lanzador Claude - first-run seed for MSI deployments.
+  Public properties (set on the msiexec command line, e.g. for silent installs):
+    AUTOSTART=1         start the app with Windows on first run (anything else = 0, the default)
+    PROFILE=safe|auto|ps-opus   initial profile (omitted when empty)
+    PINNED="flag.verbose;env.DISABLE_TELEMETRY=1"   options pinned by default, "id[=value];..." (omitted when empty)
+  Tauri's WiX package is perMachine, so the seed is written machine-wide to
+  HKLM\Software\iDeo\LanzadorClaude\Seed (Autostart DWORD, Profile SZ, Pinned SZ). The app reads
+  HKCU first (NSIS per-user installs) and falls back to HKLM, so every end user gets it on first run
+  even when the MSI is deployed by SYSTEM/another admin account.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <?if $(sys.BUILDARCH)=x86 ?>
+    <?define SeedWin64="no" ?>
+  <?else?>
+    <?define SeedWin64="yes" ?>
+  <?endif?>
+  <Fragment>
+    <Property Id="AUTOSTART" Value="0" Secure="yes" />
+    <Property Id="PROFILE" Secure="yes" />
+    <Property Id="PINNED" Secure="yes" />
+    <!-- Coerced 0/1 value actually written: only AUTOSTART=1 enables it. -->
+    <Property Id="SEEDAUTOSTART" Value="0" />
+    <SetProperty Id="SEEDAUTOSTART" Value="1" Before="CostFinalize" Sequence="both">AUTOSTART="1"</SetProperty>
+
+    <DirectoryRef Id="TARGETDIR">
+      <Component Id="SeedRegistry" Guid="*" Win64="$(var.SeedWin64)">
+        <RegistryKey Root="HKLM" Key="Software\iDeo\LanzadorClaude\Seed" ForceDeleteOnUninstall="yes">
+          <RegistryValue Name="Autostart" Type="integer" Value="[SEEDAUTOSTART]" KeyPath="yes" />
+        </RegistryKey>
+      </Component>
+      <Component Id="SeedProfile" Guid="*" Win64="$(var.SeedWin64)">
+        <Condition><![CDATA[PROFILE <> ""]]></Condition>
+        <RegistryValue Root="HKLM" Key="Software\iDeo\LanzadorClaude\Seed" Name="Profile" Type="string" Value="[PROFILE]" KeyPath="yes" />
+      </Component>
+      <Component Id="SeedPinned" Guid="*" Win64="$(var.SeedWin64)">
+        <Condition><![CDATA[PINNED <> ""]]></Condition>
+        <RegistryValue Root="HKLM" Key="Software\iDeo\LanzadorClaude\Seed" Name="Pinned" Type="string" Value="[PINNED]" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+</Wix>

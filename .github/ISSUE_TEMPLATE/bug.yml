@@ -1,0 +1,51 @@
+name: Informe de error (Bug report)
+description: Algo no funciona como debería (Something is not working as expected)
+labels: ["bug"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción (Description)
+      description: Qué ha pasado y qué esperabas que pasara (What happened and what did you expect?)
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo (Steps to reproduce)
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Lanzador Claude (Launcher version)
+      description: La encontrarás en Acerca de o en la barra de estado (See About or the status bar)
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Versión de Windows (Windows version)
+      placeholder: Windows 11 23H2 x64
+  - type: input
+    id: claude
+    attributes:
+      label: Versión de Claude Code (Claude Code version)
+      description: Salida de `claude --version`
+  - type: dropdown
+    id: terminal
+    attributes:
+      label: Destino de apertura (Launch target)
+      options:
+        - Windows Terminal · PowerShell
+        - PowerShell
+        - Windows Terminal · WSL
+        - No aplica (Not applicable)
+  - type: textarea
+    id: capturas
+    attributes:
+      label: Capturas o registros (Screenshots or logs)
+      description: No incluyas claves ni datos privados (Do not include keys or private data)
