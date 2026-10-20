@@ -8,6 +8,8 @@ import "@fontsource/roboto-mono/500.css";
 import "./styles/tokens.css";
 import "./styles/app.css";
 import "./styles/launch.css";
+import "./styles/views.css";
+import "./styles/about.css";
 import App from "./App";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

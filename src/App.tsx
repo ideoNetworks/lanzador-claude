@@ -6,6 +6,10 @@ import NavRail from "./components/NavRail";
 import StatusBar from "./components/StatusBar";
 import Toast from "./components/Toast";
 import Placeholder from "./views/Placeholder";
+import ProfilesView from "./views/ProfilesView";
+import HistoryView from "./views/HistoryView";
+import SettingsView from "./views/SettingsView";
+import AboutDialog from "./components/AboutDialog";
 import LaunchView from "./views/LaunchView";
 import UpdateBanner from "./components/UpdateBanner";
 import { useAppEvents } from "./integration/useAppEvents";
@@ -52,12 +56,16 @@ export default function App() {
       <div className="body">
         <NavRail onAbout={() => useStore.getState().setAboutOpen(true)} />
         <main className="main">
-          {/* Remaining views are filled in by Tasks 10-11. */}
-          {view === "launch" ? <LaunchView /> : <Placeholder title={t(`nav.${view}`)} />}
+          {view === "launch" ? <LaunchView />
+            : view === "profiles" ? <ProfilesView />
+            : view === "history" ? <HistoryView />
+            : view === "settings" ? <SettingsView />
+            : <Placeholder title={t(`nav.${view}`)} />}
         </main>
       </div>
       <StatusBar />
       <SearchPalette />
+      <AboutDialog />
       <Toast />
     </div>
   );

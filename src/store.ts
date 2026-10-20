@@ -5,6 +5,8 @@ import { initialActive, type OptState } from "./logic/checkboxes";
 import { detectLanguage, setLanguage, t } from "./i18n";
 import { errorText } from "./i18n/errors";
 import { sameSelection } from "./logic/options";
+import { applyProfile } from "./logic/selection";
+import { folderProfileKey } from "./logic/profiles";
 import { currentRequest, requestKey, truncate, type LaunchExtras } from "./logic/request";
 
 /** Pinned option changes are persisted after this quiet period (or on flush). */
@@ -41,6 +43,8 @@ interface State {
   setUpdate: (u: { version: string; notes: string | null } | null) => void;
   load: () => Promise<void>;
   saveConfig: (patch: Partial<AppConfig>) => Promise<void>;
+  /** Replaces the whole config (import): language, target and options follow it. */
+  replaceConfig: (config: AppConfig) => void;
   selectPath: (p: string | null) => void;
   setView: (v: ViewId) => void;
   setOpt: (o: OptState) => void;
@@ -120,7 +124,25 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  selectPath: (selectedPath) => set({ selectedPath }),
+  replaceConfig(config) {
+    set({ config, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
+    const code = (config.language ?? "").toLowerCase();
+    if (code.startsWith("es") || code.startsWith("en") || code.startsWith("zh")) setLanguage(detectLanguage(config.language, "en"));
+    void Promise.resolve().then(() => api.refreshTray()).catch(() => {});
+  },
+
+  selectPath(selectedPath) {
+    set({ selectedPath });
+    // A folder with its own default profile applies it when chosen.
+    const { config, opt } = get();
+    if (!selectedPath || !config) return;
+    const key = folderProfileKey(config.folderProfiles ?? {}, selectedPath);
+    const profile = key === undefined ? undefined : config.profiles.find((p) => p.id === config.folderProfiles[key]);
+    if (!profile) return;
+    get().updateOpt(applyProfile(opt, profile));
+    set({ target: profile.target });
+    if (config.activeProfile !== profile.id) void get().saveConfig({ activeProfile: profile.id });
+  },
   setView: (view) => set({ view }),
   setOpt: (opt) => set({ opt }),
   updateOpt(opt) {
