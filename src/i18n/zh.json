@@ -1,0 +1,58 @@
+{
+  "app": { "name": "Claude 启动器" },
+  "top": {
+    "search": "搜索文件夹或项目…",
+    "language": "语言",
+    "theme": "切换浅色/深色主题",
+    "logoAlt": "标志"
+  },
+  "nav": {
+    "launch": "启动",
+    "new": "新建项目",
+    "profiles": "配置方案",
+    "skills": "技能",
+    "history": "历史",
+    "settings": "设置",
+    "about": "关于",
+    "collapse": "折叠菜单",
+    "expand": "展开菜单"
+  },
+  "status": {
+    "connecting": "正在连接引擎…",
+    "connected": "已连接到引擎",
+    "disconnected": "引擎不可用"
+  },
+  "placeholder": {
+    "title": "此页面暂不可用",
+    "body": "将在后续版本中完成。"
+  },
+  "common": {
+    "close": "关闭",
+    "copy": "复制",
+    "copied": "已复制",
+    "cancel": "取消",
+    "save": "保存",
+    "loading": "加载中…"
+  },
+  "profiles": {
+    "builtin": {
+      "safe": "安全",
+      "auto": "自动",
+      "ps-opus": "PowerShell + Opus"
+    }
+  },
+  "errors": {
+    "path_not_found": "找不到指定的路径。",
+    "access_denied": "无权访问该文件夹或文件。",
+    "launch_failed": "无法启动 Claude。",
+    "wt_not_found": "未找到 Windows Terminal。请选择 PowerShell 或安装它。",
+    "invalid_key": "指定的密钥无效。",
+    "secret_store_failed": "无法访问 Windows 凭据管理器。",
+    "io": "读写错误。",
+    "git_missing": "未安装 Git，或不在 PATH 中。",
+    "repo_url_empty": "缺少技能仓库 URL。",
+    "git_failed": "Git 执行失败。请检查仓库 URL 和网络连接。",
+    "invalid_name": "名称无效。",
+    "already_exists": "已存在同名项目。"
+  }
+}

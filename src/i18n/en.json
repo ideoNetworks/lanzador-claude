@@ -1,0 +1,58 @@
+{
+  "app": { "name": "Claude Launcher" },
+  "top": {
+    "search": "Search folder or project…",
+    "language": "Language",
+    "theme": "Toggle light/dark theme",
+    "logoAlt": "Logo"
+  },
+  "nav": {
+    "launch": "Launch",
+    "new": "New project",
+    "profiles": "Profiles",
+    "skills": "Skills",
+    "history": "History",
+    "settings": "Settings",
+    "about": "About",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu"
+  },
+  "status": {
+    "connecting": "Connecting to the engine…",
+    "connected": "Connected to the engine",
+    "disconnected": "Engine unavailable"
+  },
+  "placeholder": {
+    "title": "This section is not available yet",
+    "body": "It will be completed in an upcoming version."
+  },
+  "common": {
+    "close": "Close",
+    "copy": "Copy",
+    "copied": "Copied",
+    "cancel": "Cancel",
+    "save": "Save",
+    "loading": "Loading…"
+  },
+  "profiles": {
+    "builtin": {
+      "safe": "Safe",
+      "auto": "Automatic",
+      "ps-opus": "PowerShell + Opus"
+    }
+  },
+  "errors": {
+    "path_not_found": "The given path was not found.",
+    "access_denied": "Access denied to the folder or file.",
+    "launch_failed": "Claude could not be launched.",
+    "wt_not_found": "Windows Terminal was not found. Choose PowerShell or install it.",
+    "invalid_key": "The given key is not valid.",
+    "secret_store_failed": "Could not access Windows Credential Manager.",
+    "io": "Read or write error.",
+    "git_missing": "Git is not installed or not on the PATH.",
+    "repo_url_empty": "The skills repository URL is missing.",
+    "git_failed": "Git failed. Check the repository URL and your connection.",
+    "invalid_name": "The name is not valid.",
+    "already_exists": "An item with that name already exists."
+  }
+}

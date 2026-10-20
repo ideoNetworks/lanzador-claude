@@ -1,0 +1,58 @@
+{
+  "app": { "name": "Lanzador Claude" },
+  "top": {
+    "search": "Buscar carpeta o proyecto…",
+    "language": "Idioma",
+    "theme": "Cambiar tema claro/oscuro",
+    "logoAlt": "Logotipo"
+  },
+  "nav": {
+    "launch": "Iniciar",
+    "new": "Proyecto nuevo",
+    "profiles": "Perfiles",
+    "skills": "Skills",
+    "history": "Historial",
+    "settings": "Ajustes",
+    "about": "Acerca de",
+    "collapse": "Contraer menú",
+    "expand": "Expandir menú"
+  },
+  "status": {
+    "connecting": "Conectando con el motor…",
+    "connected": "Conectado al motor",
+    "disconnected": "Motor no disponible"
+  },
+  "placeholder": {
+    "title": "Esta sección aún no está disponible",
+    "body": "Se completará en una versión próxima."
+  },
+  "common": {
+    "close": "Cerrar",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "loading": "Cargando…"
+  },
+  "profiles": {
+    "builtin": {
+      "safe": "Seguro",
+      "auto": "Automático",
+      "ps-opus": "PowerShell + Opus"
+    }
+  },
+  "errors": {
+    "path_not_found": "No se encuentra la ruta indicada.",
+    "access_denied": "Acceso denegado a la carpeta o al archivo.",
+    "launch_failed": "No se pudo iniciar Claude.",
+    "wt_not_found": "No se encuentra Windows Terminal. Elige PowerShell o instálalo.",
+    "invalid_key": "La clave indicada no es válida.",
+    "secret_store_failed": "No se pudo acceder al Administrador de credenciales de Windows.",
+    "io": "Error de lectura o escritura.",
+    "git_missing": "Git no está instalado o no se encuentra en el PATH.",
+    "repo_url_empty": "Falta la URL del repositorio de skills.",
+    "git_failed": "Git ha fallado. Revisa la URL del repositorio y tu conexión.",
+    "invalid_name": "El nombre no es válido.",
+    "already_exists": "Ya existe un elemento con ese nombre."
+  }
+}
