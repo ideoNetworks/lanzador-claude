@@ -71,7 +71,8 @@ mod tests {
         assert!(find(&v, "--worktree").1);
         // wrapped description is joined
         assert!(find(&v, "--model").2.contains("full name"));
-        // commands section is not parsed as options
-        assert!(!v.iter().any(|x| x.0 == "agents"));
+        // the Options section only: the last option is --worktree, not a subcommand
+        assert_eq!(v.last().map(|x| x.0.as_str()), Some("--worktree"));
+        assert!(!v.iter().any(|x| !x.0.starts_with("--")));
     }
 }

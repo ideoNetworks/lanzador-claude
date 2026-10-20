@@ -57,11 +57,17 @@ fn short(desc: &str) -> String {
     format!("{}…", cut.trim_end())
 }
 
+/// Help text that ties a flag to non-interactive (print) mode.
+fn is_print_only(desc: &str) -> bool {
+    let d = desc.to_lowercase();
+    ["--print", "--output-format", "--input-format", "print mode"].iter().any(|m| d.contains(m))
+}
+
 /// Adds flags found in `claude --help` but missing from the catalog, in group "other".
 pub fn merge_help(mut items: Vec<CatalogItem>, parsed: Vec<(String, bool, String)>) -> Vec<CatalogItem> {
     for (flag, takes_value, desc) in parsed {
         if SKIPPED.contains(&flag.as_str())
-            || desc.contains("only works with --print")
+            || is_print_only(&desc)
             || items.iter().any(|i| i.kind == "flag" && i.key == flag)
         {
             continue;
@@ -139,6 +145,9 @@ mod tests {
         parsed.push(("--brand-new-flag".into(), true, "Brand new thing".into()));
         let merged = merge_help(load_embedded(), parsed);
         assert!(!merged.iter().any(|i| i.key == "--output-format"));
+        for f in ["--include-hook-events", "--replay-user-messages", "--permission-prompts"] {
+            assert!(!merged.iter().any(|i| i.key == f), "{f} should be skipped");
+        }
         assert!(!merged.iter().any(|i| i.key == "--print" || i.key == "--help" || i.key == "--version"));
         let n = merged.iter().find(|i| i.key == "--brand-new-flag").expect("new flag");
         assert_eq!(n.group, "other");

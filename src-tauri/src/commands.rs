@@ -48,53 +48,73 @@ pub fn import_config(path: String) -> AppResult<AppConfig> {
     Ok(cfg)
 }
 
-/// Runs `claude --help` (5 s limit, no console window). Tries `claude` directly, then via `cmd /C`.
-fn run_claude_help() -> Option<String> {
+/// Total time allowed for finding and running `claude --help` (both attempts share it).
+const HELP_BUDGET: std::time::Duration = std::time::Duration::from_secs(5);
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Kills `child` and everything it spawned (npm shims leave a node grandchild holding the pipe).
+fn kill_tree(child: &mut std::process::Child) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let _ = std::process::Command::new("taskkill")
+            .args(["/T", "/F", "/PID", &child.id().to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status();
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
+/// Runs `program args` and returns its stdout if it exits successfully before `deadline`.
+/// Never blocks past the deadline: output is read on a detached thread and awaited with a timeout.
+fn run_capture(program: &str, args: &[&str], deadline: std::time::Instant) -> Option<String> {
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
 
-    fn attempt(mut cmd: Command) -> Option<String> {
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-        }
-        let mut child = cmd
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .ok()?;
-        // Drain stdout on a thread so a full pipe cannot stall the child.
-        let mut out = child.stdout.take()?;
-        let reader = std::thread::spawn(move || {
-            let mut buf = Vec::new();
-            let _ = std::io::Read::read_to_end(&mut out, &mut buf);
-            buf
-        });
-        let deadline = Instant::now() + Duration::from_secs(5);
-        let ok = loop {
-            match child.try_wait() {
-                Ok(Some(status)) => break status.success(),
-                Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(25)),
-                _ => {
-                    let _ = child.kill();
-                    let _ = child.wait();
-                    break false;
-                }
-            }
-        };
-        let text = String::from_utf8_lossy(&reader.join().ok()?).into_owned();
-        (ok && !text.trim().is_empty()).then_some(text)
+    let mut cmd = Command::new(program);
+    cmd.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
     }
+    let mut child = cmd.spawn().ok()?;
+    let mut out = child.stdout.take()?;
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = std::io::Read::read_to_end(&mut out, &mut buf);
+        let _ = tx.send(buf);
+    });
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => break,
+            Ok(Some(_)) => return None,
+            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(25)),
+            _ => {
+                kill_tree(&mut child);
+                return None;
+            }
+        }
+    }
+    // The child exited; a surviving grandchild may still hold the pipe, so wait only until the deadline.
+    let wait = deadline.saturating_duration_since(Instant::now());
+    let buf = rx.recv_timeout(wait).ok()?;
+    let text = String::from_utf8_lossy(&buf).into_owned();
+    (!text.trim().is_empty()).then_some(text)
+}
 
-    let mut direct = Command::new("claude");
-    direct.arg("--help");
-    attempt(direct).or_else(|| {
-        let mut via_cmd = Command::new("cmd");
-        via_cmd.args(["/C", "claude", "--help"]);
-        attempt(via_cmd)
-    })
+/// Runs `claude --help` (5 s total, no console window). Tries `claude`, then `cmd /C claude`.
+fn run_claude_help() -> Option<String> {
+    let deadline = std::time::Instant::now() + HELP_BUDGET;
+    run_capture("claude", &["--help"], deadline)
+        .or_else(|| run_capture("cmd", &["/C", "claude", "--help"], deadline))
 }
 
 /// Embedded catalog, plus flags discovered in `claude --help` when `include_help` is set.
@@ -110,5 +130,31 @@ pub async fn get_catalog(include_help: bool) -> Vec<CatalogItem> {
     match help {
         Some(help) => catalog::merge_help(items, help_parser::parse(&help)),
         None => items,
+    }
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn runner_times_out_and_kills_process_tree() {
+        let start = Instant::now();
+        let r = run_capture("cmd", &["/C", "ping -n 30 127.0.0.1"], start + Duration::from_secs(1));
+        assert!(r.is_none());
+        assert!(start.elapsed() < Duration::from_secs(3), "took {:?}", start.elapsed());
+    }
+
+    #[test]
+    fn runner_captures_output() {
+        let r = run_capture("cmd", &["/C", "echo hola"], Instant::now() + Duration::from_secs(5));
+        assert!(r.is_some_and(|t| t.contains("hola")));
+    }
+
+    #[test]
+    fn runner_missing_program_is_none() {
+        let r = run_capture("definitely-not-a-program-xyz", &[], Instant::now() + Duration::from_secs(1));
+        assert!(r.is_none());
     }
 }
