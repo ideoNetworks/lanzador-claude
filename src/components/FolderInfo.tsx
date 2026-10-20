@@ -17,7 +17,7 @@ export default function FolderInfo() {
   const favorites = useStore((s) => s.config?.favorites) ?? NONE;
   const lastLaunch = useStore((s) => s.config?.history[0]?.at);
   const toggleFavorite = useStore((s) => s.toggleFavorite);
-  const launchNow = useStore((s) => s.launchNow);
+  const launchWithPreview = useStore((s) => s.launchWithPreview);
   const launching = useStore((s) => s.launching);
   const showError = useStore((s) => s.showError);
   const [info, setInfo] = useState<Info | null>(null);
@@ -97,7 +97,7 @@ export default function FolderInfo() {
         </button>
         {hasSessions && (
           <>
-            <button className="btn" disabled={launching} onClick={() => void launchNow({ extra: { "flag.continue": null } })}>
+            <button className="btn" disabled={launching} onClick={() => void launchWithPreview({ extra: { "flag.continue": null } })}>
               {icons.resume}
               {t("info.continue")}
             </button>
@@ -119,7 +119,7 @@ export default function FolderInfo() {
             label: s.title || t("info.untitled"),
             sub: `${relativeTime(s.modifiedAt, lang)} · ${s.id.slice(0, 8)}`,
             icon: icons.history,
-            onSelect: () => void launchNow({ resumeId: s.id }),
+            onSelect: () => void launchWithPreview({ resumeId: s.id }),
           }))}
         />
       )}

@@ -70,6 +70,7 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
   const drafts = useStore((s) => s.drafts);
   const updateOpt = useStore((s) => s.updateOpt);
   const setDraft = useStore((s) => s.setDraft);
+  const flushPinned = useStore((s) => s.flushPinned);
   const { id } = item;
   const on = id in opt.active;
   const pinned = id in opt.pinned;
@@ -102,6 +103,7 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
         spellCheck={false}
         aria-label={item.key}
         onChange={(e) => change(e.target.value === "" ? null : e.target.value)}
+        onBlur={flushPinned}
       />
     );
   } else if (v.kind === "fixed") {

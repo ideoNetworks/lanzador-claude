@@ -1,10 +1,18 @@
 import { create } from "zustand";
 import * as api from "./api";
-import type { AppConfig, CatalogItem, Selection, Target, ViewId } from "./api";
+import type { AppConfig, CatalogItem, LaunchRequest, Selection, Target, ViewId } from "./api";
 import { initialActive, type OptState } from "./logic/checkboxes";
 import { detectLanguage, setLanguage, t } from "./i18n";
 import { errorText } from "./i18n/errors";
 import { sameSelection } from "./logic/options";
+import { currentRequest, requestKey, truncate, type LaunchExtras } from "./logic/request";
+
+/** Pinned option changes are persisted after this quiet period (or on flush). */
+export const PINNED_SAVE_MS = 400;
+const TOAST_CODE_MAX = 160;
+
+/** The preview on screen and the exact request that produced it. */
+export interface PreviewState { key: string; request: LaunchRequest; text: string; error: boolean }
 
 interface State {
   config: AppConfig | null;
@@ -15,6 +23,11 @@ interface State {
   engineUp: boolean;
   engineVersion: string;
   toast: string | null;
+  /** Monospace detail under the toast message (the launched command). */
+  toastCode: string | null;
+  /** Footer preview; Launch / Ctrl+Enter only use it while its key matches the live request. */
+  preview: PreviewState | null;
+  setPreview: (p: PreviewState | null) => void;
   /** Session-only launch target (starts as config.defaultTarget). */
   target: Target;
   /** Remembered values of options that are currently off (session only). */
@@ -31,21 +44,29 @@ interface State {
   selectPath: (p: string | null) => void;
   setView: (v: ViewId) => void;
   setOpt: (o: OptState) => void;
-  /** Sets the option state; pinned changes are persisted to config.pinned immediately. */
+  /** Sets the option state; pinned changes are persisted to config.pinned (debounced, see flushPinned). */
   updateOpt: (o: OptState) => void;
+  /** Saves a pending pinned change now (blur / unmount / before launching). */
+  flushPinned: () => void;
   setDraft: (id: string, value: string | null) => void;
   setTarget: (t: Target) => void;
   setPaletteOpen: (open: boolean) => void;
   setAboutOpen: (open: boolean) => void;
   toggleFavorite: (path: string) => void;
-  /** Launches the selected folder with the active options (plus extra ones / a session to resume). */
-  launchNow: (opts?: { extra?: Selection; resumeId?: string | null }) => Promise<void>;
+  /** Launches exactly `req` and reports `preview` (the command built for it) in the toast. */
+  launchRequest: (req: LaunchRequest, preview: string) => Promise<void>;
+  /** Builds the request (selection + extras), previews it, then launches that same object. */
+  launchWithPreview: (x: LaunchExtras) => Promise<void>;
+  /** Launch / Ctrl+Enter: launches the previewed request if it still matches the live state. */
+  launchPreviewed: () => Promise<void>;
   setEngine: (up: boolean, version?: string) => void;
-  showToast: (msg: string) => void;
+  showToast: (msg: string, code?: string | null) => void;
   showError: (e: unknown) => void;
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+let pinnedTimer: ReturnType<typeof setTimeout> | undefined;
+let pinnedDirty = false;
 
 export const useStore = create<State>((set, get) => ({
   config: null,
@@ -56,6 +77,9 @@ export const useStore = create<State>((set, get) => ({
   engineUp: false,
   engineVersion: "",
   toast: null,
+  toastCode: null,
+  preview: null,
+  setPreview: (preview) => set({ preview }),
   target: "wt",
   drafts: {},
   paletteOpen: false,
@@ -102,7 +126,16 @@ export const useStore = create<State>((set, get) => ({
   updateOpt(opt) {
     const before = get().opt.pinned;
     set({ opt });
-    if (!sameSelection(before, opt.pinned)) void get().saveConfig({ pinned: { ...opt.pinned } });
+    if (sameSelection(before, opt.pinned)) return;
+    pinnedDirty = true;
+    clearTimeout(pinnedTimer);
+    pinnedTimer = setTimeout(() => get().flushPinned(), PINNED_SAVE_MS);
+  },
+  flushPinned() {
+    clearTimeout(pinnedTimer);
+    if (!pinnedDirty) return;
+    pinnedDirty = false;
+    void get().saveConfig({ pinned: { ...get().opt.pinned } });
   },
   setDraft: (id, value) => set((s) => ({ drafts: { ...s.drafts, [id]: value } })),
   setTarget: (target) => set({ target }),
@@ -113,13 +146,17 @@ export const useStore = create<State>((set, get) => ({
     const has = favs.some((f) => f.toLowerCase() === path.toLowerCase());
     void get().saveConfig({ favorites: has ? favs.filter((f) => f.toLowerCase() !== path.toLowerCase()) : [...favs, path] });
   },
-  async launchNow(opts) {
-    const { selectedPath: path, target, opt, launching } = get();
-    if (!path || launching) return;
+  async launchRequest(req, preview) {
+    if (get().launching) return;
+    get().flushPinned();
     set({ launching: true });
     try {
-      await api.launch({ path, target, selection: { ...opt.active, ...opts?.extra }, resumeId: opts?.resumeId ?? null });
-      get().showToast(t("toast.launched", { path }));
+      await api.launch(req);
+      get().showToast(t("toast.launched", { path: req.path }), truncate(preview, TOAST_CODE_MAX));
+      // The tray's "Recientes" menu reads config: refresh it (no tray in tests / errors ignored).
+      void Promise.resolve()
+        .then(() => api.refreshTray())
+        .catch(() => {});
       // The engine updated recents and history: reload so later saves do not overwrite them.
       try {
         const config = await api.getConfig();
@@ -133,13 +170,30 @@ export const useStore = create<State>((set, get) => ({
       set({ launching: false });
     }
   },
+  async launchWithPreview(x) {
+    const req = currentRequest(get(), x);
+    if (!req || get().launching) return;
+    let preview: string;
+    try {
+      preview = await api.buildCommand(req);
+    } catch (e) {
+      get().showError(e);
+      return;
+    }
+    await get().launchRequest(req, preview);
+  },
+  async launchPreviewed() {
+    const p = get().preview;
+    if (!p || p.error || p.key !== requestKey(currentRequest(get()))) return;
+    await get().launchRequest(p.request, p.text);
+  },
   setEngine: (engineUp, version) =>
     set((s) => ({ engineUp, engineVersion: version ?? s.engineVersion })),
 
-  showToast(msg) {
+  showToast(msg, code = null) {
     clearTimeout(toastTimer);
-    set({ toast: msg });
-    toastTimer = setTimeout(() => set({ toast: null }), 3500);
+    set({ toast: msg, toastCode: code });
+    toastTimer = setTimeout(() => set({ toast: null, toastCode: null }), code ? 5000 : 3500);
   },
   showError: (e) => get().showToast(errorText(e)),
 }));

@@ -266,8 +266,12 @@ pub async fn create_project(req: project::NewProjectRequest) -> AppResult<projec
 
 /// Raw `cmd.exe` command line for `code "<path>"`. With `/S`, cmd strips the outer quotes and
 /// keeps the inner quoted path literal, so `&`, `;` and spaces in the path stay inert.
+/// Trailing separators are trimmed (`\"` would escape the quote); a bare drive becomes `C:\.`.
 pub fn vscode_cmdline(path: &str) -> String {
-    format!(r#"/D /S /C "code "{}"""#, path.replace('"', ""))
+    let clean = path.replace('"', "");
+    let trimmed = clean.trim_end_matches(['\\', '/']);
+    let arg = if trimmed.len() == 2 && trimmed.ends_with(':') { format!(r"{trimmed}\.") } else { trimmed.to_string() };
+    format!(r#"/D /S /C "code "{arg}"""#)
 }
 
 /// Raw argument for `explorer.exe`: quoted path without trailing separators (a `\"` would
@@ -363,6 +367,15 @@ mod open_tests {
     fn vscode_cmdline_quotes_path_for_cmd() {
         assert_eq!(vscode_cmdline(r"C:\Proyectos\José's app; v2"), r#"/D /S /C "code "C:\Proyectos\José's app; v2"""#);
         assert_eq!(vscode_cmdline(r"C:\a&b"), r#"/D /S /C "code "C:\a&b"""#);
+    }
+
+    #[test]
+    fn vscode_cmdline_trims_trailing_separator_but_keeps_drive_roots() {
+        // A trailing `\` before the closing quote would be read as an escaped quote.
+        assert_eq!(vscode_cmdline(r"C:\Desarrollo\x\"), r#"/D /S /C "code "C:\Desarrollo\x"""#);
+        assert_eq!(vscode_cmdline(r"C:\Desarrollo\x/"), r#"/D /S /C "code "C:\Desarrollo\x"""#);
+        assert_eq!(vscode_cmdline(r"C:\"), r#"/D /S /C "code "C:\."""#);
+        assert_eq!(vscode_cmdline("D:"), r#"/D /S /C "code "D:\."""#);
     }
 
     #[test]
