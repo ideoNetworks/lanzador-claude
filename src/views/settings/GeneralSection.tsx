@@ -58,6 +58,13 @@ export default function GeneralSection() {
       <Row label={t("settings.showHidden")}>
         <Switch label={t("settings.showHidden")} checked={config.showHidden} onChange={(showHidden) => void saveConfig({ showHidden })} />
       </Row>
+      <Row label={t("settings.expandProjects")} hint={t("settings.expandProjectsHint")}>
+        <Switch
+          label={t("settings.expandProjects")}
+          checked={config.expandProjectsOnClick ?? false}
+          onChange={(expandProjectsOnClick) => void saveConfig({ expandProjectsOnClick })}
+        />
+      </Row>
       <Row label={t("settings.defaultTarget")}>
         <select
           className="sel2"

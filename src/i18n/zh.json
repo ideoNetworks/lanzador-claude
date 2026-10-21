@@ -55,11 +55,11 @@
     "apply": "应用",
     "applied": "已应用方案“{name}”",
     "created": "已创建方案“{name}”",
-    "folderDefault": "将其设为所选文件夹的默认方案",
-    "folderNone": "请先在“启动”页面选择文件夹，才能设置默认方案。",
-    "folderHint": "选择 {path} 时将应用此方案。",
     "builtinNote": "内置方案不能重命名或删除。",
-    "empty": "还没有配置方案。"
+    "empty": "还没有配置方案。",
+    "applyProject": "应用到此项目",
+    "appliedProject": "配置文件“{name}”已固定到 {path}",
+    "projectNone": "在“启动”中选择文件夹，即可将配置文件应用到该项目。"
   },
   "errors": {
     "path_not_found": "找不到指定的路径。",
@@ -88,7 +88,8 @@
     "preview_stale": "预览已更改，请检查后再次点击“启动”。",
     "image_type": "不支持的图片格式（请使用 SVG、PNG、ICO 或 JPG）。",
     "image_too_large": "图片大于 2 MB。",
-    "skills_not_synced": "技能仓库尚未同步。"
+    "skills_not_synced": "技能仓库尚未同步。",
+    "settings_invalid": "项目的 settings 文件不是有效的 JSON；请先修正再固定选项。"
   },
   "cfgError": {
     "title": "无法读取配置",
@@ -110,7 +111,15 @@
     "favAdd": "添加到收藏",
     "favRemove": "从收藏中移除",
     "openExplorer": "在资源管理器中打开",
-    "select": "选择此文件夹"
+    "select": "选择此文件夹",
+    "projClaude": "Claude 项目",
+    "projCode": "项目",
+    "expand": "显示子文件夹",
+    "collapse": "隐藏子文件夹",
+    "markProject": "标记为项目",
+    "unmarkProject": "不是项目",
+    "autoDetect": "自动检测",
+    "ownOptions": "有专属选项"
   },
   "info": {
     "none": "请选择文件夹",
@@ -149,7 +158,31 @@
     "secretPlaceholder": "粘贴密钥…",
     "secretDelete": "删除已保存的密钥",
     "none": "—",
-    "list": "选项"
+    "list": "选项",
+    "origin": {
+      "local": "本地",
+      "shared": "团队",
+      "user": "用户"
+    },
+    "originTip": {
+      "local": "保存在项目的 .claude/settings.local.json 中（仅你自己；git 会忽略）。",
+      "shared": "保存在项目的 .claude/settings.json 中，与团队共享。",
+      "user": "来自你的 ~/.claude/settings.json，适用于你的所有项目。"
+    },
+    "pinTo": {
+      "local": "固定到项目的 .claude/settings.local.json",
+      "project": "为此项目固定",
+      "defaults": "固定为默认（没有专属选项的文件夹）"
+    },
+    "unpin": "取消固定",
+    "once": "仅此一次",
+    "onceTip": "本次启动已停用，下次会重新启用。",
+    "locked": "Claude 会从 settings 文件应用此项，无法仅本次停用。要移除，请取消勾选紫色复选框。",
+    "userPinned": "它位于你的 ~/.claude/settings.json 中；启动器不会修改该文件。",
+    "sharedAsk": "它位于与整个团队共享的 .claude/settings.json 中。也从那里移除吗？",
+    "sharedYes": "移除",
+    "helpUntranslated": "来自 claude --help 的原文（未翻译）。",
+    "broken": "{files} 不是有效的 JSON：启动器不会读取或修改它。"
   },
   "target": {
     "wt": "Windows Terminal · PowerShell",
@@ -168,7 +201,9 @@
     "vscode": "VS Code",
     "start": "启动",
     "noPath": "选择文件夹以查看命令",
-    "preview": "命令预览"
+    "preview": "命令预览",
+    "fromFile": "+{n} 项来自 settings.json",
+    "fromFileTip": "Claude 从 settings.json 文件读取的选项，无需在命令中传递。"
   },
   "toast": {
     "launched": "已在 {path} 中启动 Claude",
@@ -267,7 +302,9 @@
     "exportName": "lanzador-claude-config.json",
     "jsonFilter": "JSON 配置",
     "imageFilter": "图片",
-    "iconFilter": "图标和图片"
+    "iconFilter": "图标和图片",
+    "expandProjects": "单击展开项目",
+    "expandProjectsHint": "关闭时，项目只能通过其 + 按钮展开。"
   },
   "about": {
     "title": "关于",
@@ -376,5 +413,21 @@
     "update": "更新",
     "upToDate": "已是最新",
     "updateAvailable": "有可用更新"
+  },
+  "scope": {
+    "label": "选项适用于",
+    "project": "此项目",
+    "defaults": "默认",
+    "own": "此项目有自己的选项。",
+    "inherited": "使用 {name} 的选项。",
+    "usingDefaults": "使用默认选项。固定任意一项后，项目将拥有自己的选项。",
+    "defaultsNote": "用于没有自己选项的文件夹。",
+    "noPath": "选择一个文件夹以保存其专属选项。",
+    "reset": "恢复为默认",
+    "resetTip": "删除启动器为此项目保存的选项，不会改动其 settings.json 文件。",
+    "useAsDefault": "设为默认",
+    "useAsDefaultTip": "将当前看到的已固定选项复制为默认选项。",
+    "resetDone": "项目已恢复使用默认选项。",
+    "defaultsSaved": "默认选项已保存。"
   }
 }

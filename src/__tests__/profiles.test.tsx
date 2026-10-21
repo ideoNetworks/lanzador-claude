@@ -7,6 +7,8 @@ vi.mock("../api", () => ({
   refreshTray: vi.fn(),
   buildCommand: vi.fn(),
   launch: vi.fn(),
+  projectSettings: vi.fn().mockResolvedValue({ entries: [], mappable: ["flag.model"], broken: [] }),
+  projectSettingsApply: vi.fn().mockResolvedValue({ entries: [], mappable: ["flag.model"], broken: [] }),
 }));
 
 import * as api from "../api";
@@ -14,7 +16,7 @@ import type { AppConfig, Profile } from "../api";
 import { useStore } from "../store";
 import { setLanguage } from "../i18n";
 import ProfilesView from "../views/ProfilesView";
-import { toggleFolderProfile, removeProfile } from "../logic/profiles";
+import { removeProfile } from "../logic/profiles";
 
 const mocked = vi.mocked(api);
 const builtin = (id: string, selection: Profile["selection"]): Profile => ({ id, name: id, builtin: true, selection, target: "wt" });
@@ -23,7 +25,7 @@ const user: Profile = { id: "user-1", name: "Mío", builtin: false, selection: {
 function cfg(over: Partial<AppConfig> = {}): AppConfig {
   return {
     profiles: [builtin("safe", { "flag.permission-mode": "manual" }), builtin("auto", {}), user],
-    activeProfile: null, folderProfiles: {}, ...over,
+    activeProfile: null, pinned: {}, projects: {}, defaultTarget: "wt", ...over,
   } as unknown as AppConfig;
 }
 const row = (name: string) => screen.getByText(name).closest("li") as HTMLElement;
@@ -81,41 +83,30 @@ describe("ProfilesView", () => {
     expect(mocked.saveConfig.mock.calls[0][0].profiles.map((p) => p.id)).toEqual(["safe", "auto"]);
   });
 
-  it("folder default toggles config.folderProfiles for the selected folder", () => {
-    useStore.setState({ selectedPath: "C:\\Proyectos\\app" });
+  it("apply to this project pins the profile in the selected project", () => {
+    useStore.setState({ selectedPath: "C:\\Proyectos\\app", scope: "project", origin: {}, projectFile: null });
     render(<ProfilesView />);
-    fireEvent.click(within(row("Mío")).getByRole("checkbox"));
-    expect(mocked.saveConfig.mock.calls[0][0].folderProfiles).toEqual({ "C:\\Proyectos\\app": "user-1" });
+    fireEvent.click(within(row("Mío")).getByRole("button", { name: "Aplicar a este proyecto" }));
+    const s = useStore.getState();
+    expect(s.opt.pinned["flag.model"]).toBe("opus");
+    expect(s.target).toBe("powershell");
+    expect(s.config?.projects["C:\\Proyectos\\app"]?.pinned).toEqual({ "flag.model": "opus" });
+    expect(s.config?.projects["C:\\Proyectos\\app"]?.target).toBe("powershell");
+    expect(s.view).toBe("launch");
+  });
+
+  it("apply to this project is disabled without a folder", () => {
+    render(<ProfilesView />);
+    expect(within(row("Mío")).getByRole("button", { name: "Aplicar a este proyecto" })).toHaveProperty("disabled", true);
   });
 });
 
 describe("profile helpers", () => {
-  it("toggleFolderProfile sets, switches and clears (case-insensitive path)", () => {
-    const a = toggleFolderProfile({}, "C:\\X", "p1");
-    expect(a).toEqual({ "C:\\X": "p1" });
-    expect(toggleFolderProfile(a, "c:\\x", "p2")).toEqual({ "c:\\x": "p2" });
-    expect(toggleFolderProfile(a, "c:\\x", "p1")).toEqual({});
-  });
-  it("removeProfile refuses builtins and cleans references", () => {
-    const c = cfg({ activeProfile: "user-1", folderProfiles: { "C:\\X": "user-1", "C:\\Y": "safe" } });
+  it("removeProfile refuses builtins and clears the active reference", () => {
+    const c = cfg({ activeProfile: "user-1" });
     expect(removeProfile(c, "safe")).toBeNull();
     const r = removeProfile(c, "user-1")!;
     expect(r.activeProfile).toBeNull();
-    expect(r.folderProfiles).toEqual({ "C:\\Y": "safe" });
-  });
-});
-
-describe("folder default profile on selectPath", () => {
-  it("applies the folder profile when the folder is chosen", () => {
-    useStore.setState({
-      config: cfg({ folderProfiles: { "C:\Proyectos\app": "user-1" } }), target: "wt", selectedPath: null,
-      opt: { active: { "env.FOO": "1" }, pinned: {} },
-    });
-    useStore.getState().selectPath("c:\proyectos\APP");
-    const s = useStore.getState();
-    expect(s.opt.active).toEqual({ "flag.model": "opus" });
-    expect(s.target).toBe("powershell");
-    useStore.getState().selectPath("C:\otra");
-    expect(useStore.getState().opt.active).toEqual({ "flag.model": "opus" });
+    expect(r.profiles.map((p) => p.id)).toEqual(["safe", "auto"]);
   });
 });

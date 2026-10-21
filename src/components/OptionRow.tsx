@@ -5,6 +5,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n";
 import { setValue, toggleActive, togglePin } from "../logic/checkboxes";
 import { defaultValue, itemText, SECRET_VALUE } from "../logic/options";
+import { canOverride, isFileOrigin } from "../logic/projects";
 import Tooltip from "./Tooltip";
 import { icons } from "./icons";
 
@@ -74,20 +75,39 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
   const updateOpt = useStore((s) => s.updateOpt);
   const setDraft = useStore((s) => s.setDraft);
   const flushPinned = useStore((s) => s.flushPinned);
+  const origin = useStore((s) => s.origin[item.id]);
+  const scope = useStore((s) => s.scope);
+  const mappable = useStore((s) => !!s.projectFile && s.projectFile.path === s.selectedPath && s.projectFile.settings.mappable.includes(item.id));
+  const [askShared, setAskShared] = useState(false);
   const { id } = item;
   const on = id in opt.active;
   const pinned = id in opt.pinned;
-  const value = on ? opt.active[id] : id in drafts ? drafts[id] : defaultValue(item);
+  const once = pinned && !on;
+  const fromFile = pinned && isFileOrigin(origin);
+  // A file option without a neutral value cannot be switched off for one launch.
+  const locked = fromFile && on && !canOverride(id);
+  const value = on ? opt.active[id] : pinned ? opt.pinned[id] : id in drafts ? drafts[id] : defaultValue(item);
   const text = itemText(item, lang);
 
   const change = (v: string | null) => {
     setDraft(id, v);
-    updateOpt(setValue(useStore.getState().opt, id, v));
+    const cur = useStore.getState().opt;
+    // A user-level setting is never written: a new value applies to this launch only.
+    updateOpt(fromFile && origin === "user" ? { active: { ...cur.active, [id]: v }, pinned: cur.pinned } : setValue(cur, id, v));
   };
   const flipActive = () => {
+    if (locked) return;
     if (on) setDraft(id, opt.active[id]);
     updateOpt(toggleActive(opt, id, value));
   };
+  const flipPin = () => {
+    if (pinned && origin === "user") return;
+    if (pinned && origin === "shared") return setAskShared(true);
+    updateOpt(togglePin(opt, id, value));
+  };
+  const pinTitle = pinned
+    ? fromFile ? t(`opts.originTip.${origin}`) : t("opts.unpin")
+    : scope === "project" ? t(mappable ? "opts.pinTo.local" : "opts.pinTo.project") : t("opts.pinTo.defaults");
 
   const v = item.value;
   let control = null;
@@ -120,18 +140,22 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
       <b>{item.key}</b>
       {item.dangerous && <span className="tip-warn">{icons.warn}{t("opts.dangerous")}</span>}
       {text.t && <span className="tip-body">{text.t}</span>}
+      {item.fromHelp && lang !== "en" && <span className="tip-note">{t("opts.helpUntranslated")}</span>}
+      {fromFile && <span className="tip-note">{t(`opts.originTip.${origin}`)}</span>}
     </>
   );
 
   return (
-    <div className={`row${on ? " on" : ""}`}>
+    <>
+    <div className={`row${on ? " on" : ""}${once ? " once" : ""}`}>
       <button
         className={`cb pin${pinned ? " on" : ""}`}
         role="checkbox"
         aria-checked={pinned}
         aria-label={`${t("opts.pin")} · ${item.key}`}
-        title={t("opts.pin")}
-        onClick={() => updateOpt(togglePin(opt, id, value))}
+        aria-disabled={pinned && origin === "user" ? true : undefined}
+        title={pinned && origin === "user" ? t("opts.userPinned") : pinTitle}
+        onClick={flipPin}
       >
         {icons.ok}
       </button>
@@ -140,7 +164,8 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
         role="checkbox"
         aria-checked={on}
         aria-label={`${t("opts.active")} · ${item.key}`}
-        title={t("opts.active")}
+        aria-disabled={locked || undefined}
+        title={locked ? t("opts.locked") : once ? t("opts.onceTip") : t("opts.active")}
         onClick={flipActive}
       >
         {icons.ok}
@@ -151,8 +176,18 @@ export default function OptionRow({ item, lang }: { item: CatalogItem; lang: str
           {item.key}
         </span>
       </Tooltip>
+      {fromFile && <span className={`orig ${origin}`} title={t(`opts.originTip.${origin}`)}>{t(`opts.origin.${origin}`)}</span>}
+      {once && <span className="orig once" title={t("opts.onceTip")}>{t("opts.once")}</span>}
       <span className="desc" title={text.d}>{text.d}</span>
       {control && <span className="val">{control}</span>}
     </div>
+    {askShared && (
+      <div className="row-ask" role="alertdialog" aria-label={t("opts.sharedAsk")}>
+        <span>{icons.warn}{t("opts.sharedAsk")}</span>
+        <button className="btn sm danger fill" autoFocus onClick={() => { setAskShared(false); updateOpt(togglePin(useStore.getState().opt, id, value)); }}>{t("opts.sharedYes")}</button>
+        <button className="btn sm" onClick={() => setAskShared(false)}>{t("common.cancel")}</button>
+      </div>
+    )}
+    </>
   );
 }

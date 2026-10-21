@@ -12,7 +12,9 @@ It was born in iDeo's **IT Maintenance** department and developed by iDeo's **So
 
 - Folder tree (defaults to `C:\Desarrollo`, browsable across the whole disk), with recents and favorites.
 - Folder card: Claude sessions, git branch, `CLAUDE.md`, skills; **Continue last** and **Resume…** buttons.
-- Flags and environment variables with a **two-checkbox** design: purple (pin, remembered) and blue (enable). Every option has an explanation in a tooltip.
+- Flags and environment variables with a **two-checkbox** design: purple (pin, remembered) and blue (enable). Unchecking blue on a pinned option turns it off **just this time**. Every option has an explanation in a tooltip, in the UI language.
+- **Per-project options**: each project remembers its own (subfolders inherit their project's) and there are **defaults** for everything else. Options with a Claude Code equivalent (model, permission mode, tools, extra directories, environment variables) are read from and saved to the project's `.claude/settings.local.json`; those in `.claude/settings.json` (team) and `~/.claude/settings.json` (user) are shown too.
+- **Projects** in the folder tree (with `CLAUDE.md`, `.claude`, `.git`, `package.json`, `*.sln`…) get their own icon and do not expand when chosen: their subfolders open with the **+** button.
 - Exact preview of the command that will run, with copy and open in VS Code.
 - Profiles (Safe, Autonomous, PowerShell + Opus and your own) and a history with one-click relaunch.
 - New-project wizard: folder, `CLAUDE.md` from a template, skills, `git init` and an end-of-task notification.

@@ -55,11 +55,11 @@
     "apply": "Apply",
     "applied": "Profile “{name}” applied",
     "created": "Profile “{name}” created",
-    "folderDefault": "Use by default for the selected folder",
-    "folderNone": "Pick a folder in Launch to set a default profile for it.",
-    "folderHint": "Choosing {path} will apply this profile.",
     "builtinNote": "Built-in profiles cannot be renamed or deleted.",
-    "empty": "There are no profiles yet."
+    "empty": "There are no profiles yet.",
+    "applyProject": "Apply to this project",
+    "appliedProject": "Profile “{name}” pinned in {path}",
+    "projectNone": "Choose a folder in Launch to apply a profile to that project."
   },
   "errors": {
     "path_not_found": "The given path was not found.",
@@ -88,7 +88,8 @@
     "preview_stale": "The preview has changed; check it and press Launch again.",
     "image_type": "Unsupported image format (use SVG, PNG, ICO or JPG).",
     "image_too_large": "The image is larger than 2 MB.",
-    "skills_not_synced": "The skills repository has not been synced yet."
+    "skills_not_synced": "The skills repository has not been synced yet.",
+    "settings_invalid": "The project's settings file is not valid JSON; fix it before pinning options."
   },
   "cfgError": {
     "title": "The configuration cannot be read",
@@ -110,7 +111,15 @@
     "favAdd": "Add to favourites",
     "favRemove": "Remove from favourites",
     "openExplorer": "Open in Explorer",
-    "select": "Choose this folder"
+    "select": "Choose this folder",
+    "projClaude": "Claude project",
+    "projCode": "Project",
+    "expand": "Show subfolders",
+    "collapse": "Hide subfolders",
+    "markProject": "Mark as project",
+    "unmarkProject": "Not a project",
+    "autoDetect": "Detect automatically",
+    "ownOptions": "Has options of its own"
   },
   "info": {
     "none": "Choose a folder",
@@ -149,7 +158,31 @@
     "secretPlaceholder": "Paste the key…",
     "secretDelete": "Delete the saved key",
     "none": "—",
-    "list": "Options"
+    "list": "Options",
+    "origin": {
+      "local": "local",
+      "shared": "team",
+      "user": "user"
+    },
+    "originTip": {
+      "local": "Stored in the project's .claude/settings.local.json (yours only; git ignores it).",
+      "shared": "Stored in the project's .claude/settings.json, shared with the team.",
+      "user": "Comes from your ~/.claude/settings.json; applies to all your projects."
+    },
+    "pinTo": {
+      "local": "Pin in the project's .claude/settings.local.json",
+      "project": "Pin for this project",
+      "defaults": "Pin as default (folders without options of their own)"
+    },
+    "unpin": "Unpin",
+    "once": "just this time",
+    "onceTip": "Off for this launch; it is on again next time.",
+    "locked": "Claude applies it from the settings file and it cannot be switched off for one launch. To remove it, uncheck the purple box.",
+    "userPinned": "It is in your ~/.claude/settings.json; the launcher does not modify that file.",
+    "sharedAsk": "It is in .claude/settings.json, shared with the whole team. Remove it from there too?",
+    "sharedYes": "Remove",
+    "helpUntranslated": "Original text from claude --help.",
+    "broken": "{files} is not valid JSON: the launcher neither reads nor modifies it."
   },
   "target": {
     "wt": "Windows Terminal · PowerShell",
@@ -168,7 +201,9 @@
     "vscode": "VS Code",
     "start": "Launch",
     "noPath": "Choose a folder to see the command",
-    "preview": "Command preview"
+    "preview": "Command preview",
+    "fromFile": "+{n} from settings.json",
+    "fromFileTip": "Options Claude reads from the settings.json files; they need not be passed in the command."
   },
   "toast": {
     "launched": "Claude launched in {path}",
@@ -267,7 +302,9 @@
     "exportName": "lanzador-claude-config.json",
     "jsonFilter": "JSON configuration",
     "imageFilter": "Images",
-    "iconFilter": "Icons and images"
+    "iconFilter": "Icons and images",
+    "expandProjects": "Expand projects on click",
+    "expandProjectsHint": "When off, projects only expand with their + button."
   },
   "about": {
     "title": "About",
@@ -376,5 +413,21 @@
     "update": "Update",
     "upToDate": "Up to date",
     "updateAvailable": "Update available"
+  },
+  "scope": {
+    "label": "Options for",
+    "project": "This project",
+    "defaults": "Defaults",
+    "own": "This project has its own options.",
+    "inherited": "Uses the options of {name}.",
+    "usingDefaults": "Uses the default options. Pin one and the project gets its own.",
+    "defaultsNote": "Used by folders that have no options of their own.",
+    "noPath": "Choose a folder to save options of its own.",
+    "reset": "Back to defaults",
+    "resetTip": "Deletes the options the launcher keeps for this project. Its settings.json files are not touched.",
+    "useAsDefault": "Use as defaults",
+    "useAsDefaultTip": "Copies the pinned options you see now into the defaults.",
+    "resetDone": "The project uses the default options again.",
+    "defaultsSaved": "Default options saved."
   }
 }

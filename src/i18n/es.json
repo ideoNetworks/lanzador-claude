@@ -55,11 +55,11 @@
     "apply": "Aplicar",
     "applied": "Perfil «{name}» aplicado",
     "created": "Perfil «{name}» creado",
-    "folderDefault": "Usar por defecto en la carpeta seleccionada",
-    "folderNone": "Elige una carpeta en Iniciar para fijar un perfil por defecto.",
-    "folderHint": "Al elegir {path} se aplicará este perfil.",
     "builtinNote": "Los perfiles predefinidos no se pueden renombrar ni eliminar.",
-    "empty": "Todavía no hay perfiles."
+    "empty": "Todavía no hay perfiles.",
+    "applyProject": "Aplicar a este proyecto",
+    "appliedProject": "Perfil «{name}» fijado en {path}",
+    "projectNone": "Elige una carpeta en Iniciar para aplicar un perfil a ese proyecto."
   },
   "errors": {
     "path_not_found": "No se encuentra la ruta indicada.",
@@ -88,7 +88,8 @@
     "preview_stale": "La vista previa ha cambiado; revísala y vuelve a pulsar Iniciar.",
     "image_type": "Formato de imagen no admitido (usa SVG, PNG, ICO o JPG).",
     "image_too_large": "La imagen ocupa más de 2 MB.",
-    "skills_not_synced": "El repositorio de skills aún no se ha sincronizado."
+    "skills_not_synced": "El repositorio de skills aún no se ha sincronizado.",
+    "settings_invalid": "El archivo de settings del proyecto no es JSON válido; corrígelo antes de fijar opciones."
   },
   "cfgError": {
     "title": "No se puede leer la configuración",
@@ -110,7 +111,15 @@
     "favAdd": "Añadir a favoritos",
     "favRemove": "Quitar de favoritos",
     "openExplorer": "Abrir en el Explorador",
-    "select": "Elegir esta carpeta"
+    "select": "Elegir esta carpeta",
+    "projClaude": "Proyecto de Claude",
+    "projCode": "Proyecto",
+    "expand": "Mostrar subcarpetas",
+    "collapse": "Ocultar subcarpetas",
+    "markProject": "Marcar como proyecto",
+    "unmarkProject": "No es un proyecto",
+    "autoDetect": "Detectar automáticamente",
+    "ownOptions": "Tiene opciones propias"
   },
   "info": {
     "none": "Elige una carpeta",
@@ -149,7 +158,31 @@
     "secretPlaceholder": "Pega la clave…",
     "secretDelete": "Borrar la clave guardada",
     "none": "—",
-    "list": "Opciones"
+    "list": "Opciones",
+    "origin": {
+      "local": "local",
+      "shared": "equipo",
+      "user": "usuario"
+    },
+    "originTip": {
+      "local": "Guardada en .claude/settings.local.json del proyecto (solo tuya; git la ignora).",
+      "shared": "Guardada en .claude/settings.json del proyecto, compartido con el equipo.",
+      "user": "Viene de tu ~/.claude/settings.json; se aplica a todos tus proyectos."
+    },
+    "pinTo": {
+      "local": "Fijar en .claude/settings.local.json del proyecto",
+      "project": "Fijar para este proyecto",
+      "defaults": "Fijar por defecto (carpetas sin opciones propias)"
+    },
+    "unpin": "Quitar el fijado",
+    "once": "solo esta vez",
+    "onceTip": "Desactivada para este lanzamiento; vuelve a estar activa la próxima vez.",
+    "locked": "Claude la aplica desde el archivo de settings y no se puede desactivar solo para una vez. Para quitarla, desmarca la casilla morada.",
+    "userPinned": "Está en tu ~/.claude/settings.json; el lanzador no modifica ese archivo.",
+    "sharedAsk": "Está en .claude/settings.json, compartido con todo el equipo. ¿Quitarla también de ahí?",
+    "sharedYes": "Quitar",
+    "helpUntranslated": "Texto original de claude --help (sin traducir).",
+    "broken": "{files} no es JSON válido: el lanzador no lo lee ni lo modifica."
   },
   "target": {
     "wt": "Windows Terminal · PowerShell",
@@ -168,7 +201,9 @@
     "vscode": "VS Code",
     "start": "Iniciar",
     "noPath": "Elige una carpeta para ver el comando",
-    "preview": "Vista previa del comando"
+    "preview": "Vista previa del comando",
+    "fromFile": "+{n} de settings.json",
+    "fromFileTip": "Opciones que Claude lee de los archivos settings.json; no hace falta pasarlas en el comando."
   },
   "toast": {
     "launched": "Claude iniciado en {path}",
@@ -267,7 +302,9 @@
     "exportName": "lanzador-claude-config.json",
     "jsonFilter": "Configuración JSON",
     "imageFilter": "Imágenes",
-    "iconFilter": "Iconos e imágenes"
+    "iconFilter": "Iconos e imágenes",
+    "expandProjects": "Desplegar proyectos con un clic",
+    "expandProjectsHint": "Si está desactivado, los proyectos solo se despliegan con su botón +."
   },
   "about": {
     "title": "Acerca de",
@@ -376,5 +413,21 @@
     "update": "Actualizar",
     "upToDate": "Al día",
     "updateAvailable": "Actualización disponible"
+  },
+  "scope": {
+    "label": "Opciones de",
+    "project": "Este proyecto",
+    "defaults": "Por defecto",
+    "own": "Este proyecto tiene sus propias opciones.",
+    "inherited": "Usa las opciones de {name}.",
+    "usingDefaults": "Usa las opciones por defecto. Al fijar una, el proyecto tendrá las suyas.",
+    "defaultsNote": "Se usan en las carpetas que no tienen opciones propias.",
+    "noPath": "Elige una carpeta para guardar opciones propias.",
+    "reset": "Volver a las por defecto",
+    "resetTip": "Borra las opciones que el lanzador guarda para este proyecto. Sus archivos settings.json no se tocan.",
+    "useAsDefault": "Usar como por defecto",
+    "useAsDefaultTip": "Copia las opciones fijadas que ves ahora a las opciones por defecto.",
+    "resetDone": "El proyecto vuelve a usar las opciones por defecto.",
+    "defaultsSaved": "Opciones por defecto guardadas."
   }
 }

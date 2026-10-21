@@ -30,6 +30,8 @@ export interface TreeRow {
   hasChildren: boolean;
   expanded: boolean;
   parentId: string | null;
+  /** Project kind detected by the engine (manual marks are applied by the tree view). */
+  project?: "claude" | "code" | null;
   /** Error code for `error` rows. */
   hint?: string;
 }
@@ -43,16 +45,16 @@ export const baseName = (p: string): string => {
 
 const focusable = (r: TreeRow) => r.kind !== "error" && r.kind !== "loading";
 
-function pushFolder(out: TreeRow[], input: TreeInput, prefix: string, entry: { path: string; name: string; label?: string; hasChildren: boolean; kind: RowKind }, depth: number, parentId: string | null) {
+function pushFolder(out: TreeRow[], input: TreeInput, prefix: string, entry: { path: string; name: string; label?: string; hasChildren: boolean; kind: RowKind; project?: "claude" | "code" | null }, depth: number, parentId: string | null) {
   const id = `${prefix}|${entry.path}`;
   const expanded = input.expanded.has(id);
   const state = input.children.get(entry.path);
   const loadedEmpty = state?.status === "ok" && state.entries.length === 0;
-  out.push({ id, path: entry.path, name: entry.name, label: entry.label, depth, kind: entry.kind, hasChildren: entry.hasChildren && !loadedEmpty, expanded, parentId });
+  out.push({ id, path: entry.path, name: entry.name, label: entry.label, depth, kind: entry.kind, hasChildren: entry.hasChildren && !loadedEmpty, expanded, parentId, project: entry.project ?? null });
   if (!expanded || !state) return;
   if (state.status === "loading") out.push({ id: `${id}#loading`, path: null, name: "", depth: depth + 1, kind: "loading", hasChildren: false, expanded: false, parentId: id });
   else if (state.status === "error") out.push({ id: `${id}#error`, path: null, name: "", depth: depth + 1, kind: "error", hasChildren: false, expanded: false, parentId: id, hint: state.code });
-  else for (const e of state.entries) pushFolder(out, input, prefix, { path: e.path, name: e.name, hasChildren: e.hasChildren, kind: "folder" }, depth + 1, id);
+  else for (const e of state.entries) pushFolder(out, input, prefix, { path: e.path, name: e.name, hasChildren: e.hasChildren, kind: "folder", project: e.project ?? null }, depth + 1, id);
 }
 
 /** Flattens the visible tree: root subtree, then "This PC" with its drives. */

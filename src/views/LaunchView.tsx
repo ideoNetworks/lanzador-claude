@@ -19,6 +19,13 @@ export default function LaunchView() {
     };
   }, [flushPinned]);
 
+  // Claude writes settings.local.json itself ("always allow"): re-read it when coming back.
+  useEffect(() => {
+    const onFocus = () => void useStore.getState().refreshProjectFile();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.key === "Enter" && !useStore.getState().paletteOpen) {

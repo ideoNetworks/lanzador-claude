@@ -1,12 +1,11 @@
 import { create } from "zustand";
 import * as api from "./api";
-import type { AppConfig, AppError, CatalogItem, Lang, LaunchRequest, Selection, Target, ViewId } from "./api";
-import { initialActive, type OptState } from "./logic/checkboxes";
+import type { AppConfig, AppError, CatalogItem, Lang, LaunchRequest, ProjectSettings, Selection, Target, ViewId } from "./api";
+import type { OptState } from "./logic/checkboxes";
 import { detectLanguage, setLanguage, t } from "./i18n";
 import { errorText } from "./i18n/errors";
 import { sameSelection } from "./logic/options";
-import { applyProfile } from "./logic/selection";
-import { folderProfileKey } from "./logic/profiles";
+import { buildLayers, findKey, isFileOrigin, planPins, rebase, resolvePrefs, withoutProject, withProjectPins, type Origin, type Scope } from "./logic/projects";
 import { currentRequest, previewKey, truncate, type LaunchExtras } from "./logic/request";
 
 const errCode = (e: unknown) => (e && typeof e === "object" ? (e as { code?: unknown }).code : undefined);
@@ -22,6 +21,12 @@ interface State {
   config: AppConfig | null;
   catalog: CatalogItem[];
   opt: OptState;
+  /** Where each pinned option lives (settings file or launcher layer). */
+  origin: Record<string, Origin>;
+  /** Options shown and saved for the selected project, or the defaults. */
+  scope: Scope;
+  /** Settings files of the selected project, as last read. */
+  projectFile: { path: string; settings: ProjectSettings } | null;
   selectedPath: string | null;
   view: ViewId;
   engineUp: boolean;
@@ -60,9 +65,17 @@ interface State {
   /** Replaces the whole config (import): language, target and options follow it. */
   replaceConfig: (config: AppConfig) => void;
   selectPath: (p: string | null) => void;
+  setScope: (scope: Scope) => void;
+  /** Re-reads the project's settings files (window focus), keeping this launch's choices. */
+  refreshProjectFile: () => Promise<void>;
+  /** Drops the selected project's own launcher options (it goes back to inherited/defaults). */
+  resetProjectOptions: () => Promise<void>;
+  /** Saves the pinned options on screen (except user-level ones) as the defaults. */
+  useAsDefaults: () => Promise<void>;
   setView: (v: ViewId) => void;
   setOpt: (o: OptState) => void;
-  /** Sets the option state; pinned changes are persisted to config.pinned (debounced, see flushPinned). */
+  /** Sets the option state; pinned changes are persisted where they belong (debounced, see flushPinned):
+   * the project's settings.local.json, its launcher options, or config.pinned. */
   updateOpt: (o: OptState) => void;
   /** Saves a pending pinned change now (blur / unmount / before launching). */
   flushPinned: () => Promise<void>;
@@ -86,10 +99,31 @@ let toastTimer: ReturnType<typeof setTimeout> | undefined;
 let pinnedTimer: ReturnType<typeof setTimeout> | undefined;
 let pinnedDirty = false;
 
+type Get = () => State;
+type Set = (p: Partial<State>) => void;
+
+const fileOf = (s: State) => (s.projectFile && s.selectedPath && s.projectFile.path === s.selectedPath ? s.projectFile.settings : null);
+
+/** Pinned options as saved (config + settings files): flushPinned routes the difference. */
+const savedLayers = (s: State) => buildLayers(s.config!, s.selectedPath, s.scope, fileOf(s));
+
+/** Shows the layers of the current folder/scope from scratch (every pinned option on). */
+function relayer(get: Get, set: Set) {
+  const s = get();
+  if (!s.config) return;
+  const l = savedLayers(s);
+  clearTimeout(pinnedTimer);
+  pinnedDirty = false;
+  set({ opt: l.opt, origin: l.origin });
+}
+
 export const useStore = create<State>((set, get) => ({
   config: null,
   catalog: [],
   opt: { active: {}, pinned: {} },
+  origin: {},
+  scope: "defaults",
+  projectFile: null,
   selectedPath: null,
   view: "launch",
   engineUp: false,
@@ -116,7 +150,8 @@ export const useStore = create<State>((set, get) => ({
       const config = await api.getConfig();
       const sys = await api.systemLocale().catch(() => "en");
       setLanguage(detectLanguage(config.language, sys));
-      set({ config, configError: false, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
+      set({ config, configError: false, target: config.defaultTarget });
+      relayer(get, set);
     } catch (e) {
       if (errCode(e) === "config_unreadable") set({ configError: true });
       else get().showError(e);
@@ -158,25 +193,69 @@ export const useStore = create<State>((set, get) => ({
     // The imported pins replace the old ones: a pending pinned save must not write them back.
     clearTimeout(pinnedTimer);
     pinnedDirty = false;
-    set({ config, target: config.defaultTarget, opt: { active: initialActive(config.pinned), pinned: { ...config.pinned } } });
+    set({ config, target: config.defaultTarget });
+    relayer(get, set);
     const code = (config.language ?? "").toLowerCase();
     if (code.startsWith("es") || code.startsWith("en") || code.startsWith("zh")) setLanguage(detectLanguage(config.language, "en"));
     void Promise.resolve().then(() => api.refreshTray()).catch(() => {});
   },
 
   selectPath(selectedPath) {
-    const changed = selectedPath !== get().selectedPath;
-    set({ selectedPath });
-    // A folder with its own default profile applies it when chosen (not when re-selected,
-    // which would wipe the options changed since).
-    const { config, opt } = get();
-    if (!changed || !selectedPath || !config) return;
-    const key = folderProfileKey(config.folderProfiles ?? {}, selectedPath);
-    const profile = key === undefined ? undefined : config.profiles.find((p) => p.id === config.folderProfiles[key]);
-    if (!profile) return;
-    get().updateOpt(applyProfile(opt, profile));
-    set({ target: profile.target });
-    if (config.activeProfile !== profile.id) void get().saveConfig({ activeProfile: profile.id });
+    // Re-selecting keeps the options changed since; a new folder shows its own (or inherited
+    // or default) options and its target, then its settings files once read.
+    if (selectedPath === get().selectedPath) return;
+    void get().flushPinned();
+    const { config } = get();
+    const prefs = config && selectedPath ? resolvePrefs(config.projects ?? {}, selectedPath)?.prefs : undefined;
+    set({
+      selectedPath,
+      scope: selectedPath ? "project" : "defaults",
+      projectFile: null,
+      ...(config ? { target: prefs?.target ?? config.defaultTarget } : {}),
+    });
+    relayer(get, set);
+    if (selectedPath) void get().refreshProjectFile();
+  },
+  setScope(scope) {
+    if (scope === get().scope || (scope === "project" && !get().selectedPath)) return;
+    void get().flushPinned();
+    set({ scope });
+    relayer(get, set);
+  },
+  async refreshProjectFile() {
+    const path = get().selectedPath;
+    if (!path) return;
+    let settings: ProjectSettings;
+    try {
+      settings = await api.projectSettings(path);
+    } catch {
+      return; // missing folder: FolderInfo already says so
+    }
+    const s = get();
+    if (s.selectedPath !== path || !s.config) return;
+    const prev = s.projectFile?.path === path ? s.projectFile.settings : null;
+    if (prev && JSON.stringify(prev) === JSON.stringify(settings)) return;
+    set({ projectFile: { path, settings } });
+    // A pending pin is routed against the old layers first; the next refresh picks this up.
+    if (s.scope !== "project" || pinnedDirty) return;
+    const l = buildLayers(s.config, path, "project", settings);
+    set({ opt: rebase(s.opt, l.opt), origin: l.origin });
+  },
+  async resetProjectOptions() {
+    const { config, selectedPath } = get();
+    if (!config || !selectedPath || findKey(config.projects ?? {}, selectedPath) === undefined) return;
+    clearTimeout(pinnedTimer);
+    pinnedDirty = false;
+    if (await get().saveConfig({ projects: withoutProject(config.projects, selectedPath) })) {
+      set({ target: resolvePrefs(get().config!.projects, selectedPath)?.prefs.target ?? config.defaultTarget });
+      relayer(get, set);
+    }
+  },
+  async useAsDefaults() {
+    await get().flushPinned();
+    const { opt, origin } = get();
+    const pinned = Object.fromEntries(Object.entries(opt.pinned).filter(([id]) => origin[id] !== "user"));
+    await get().saveConfig({ pinned });
   },
   setView: (view) => set({ view }),
   setOpt: (opt) => set({ opt }),
@@ -192,10 +271,45 @@ export const useStore = create<State>((set, get) => ({
     clearTimeout(pinnedTimer);
     if (!pinnedDirty) return;
     pinnedDirty = false;
-    await get().saveConfig({ pinned: { ...get().opt.pinned } });
+    // Everything is read now: the folder or scope may change while the writes are pending.
+    const s = get();
+    const { config, selectedPath: path, scope, opt, origin } = s;
+    if (!config) return;
+    const mappable = new Set(fileOf(s)?.mappable ?? []);
+    const plan = planPins(savedLayers(s).opt.pinned, opt.pinned, origin, scope, mappable);
+    set({ origin: plan.origin });
+    if (plan.launcher) {
+      if (scope === "project" && path) await get().saveConfig({ projects: withProjectPins(config.projects ?? {}, path, { pinned: plan.launcher }) });
+      else await get().saveConfig({ pinned: plan.launcher });
+    }
+    if (path && scope === "project" && (Object.keys(plan.fileSet).length || plan.fileRemove.length)) {
+      try {
+        const settings = await api.projectSettingsApply(path, plan.fileSet, plan.fileRemove, plan.removeShared);
+        if (get().selectedPath === path) set({ projectFile: { path, settings } });
+      } catch (e) {
+        get().showError(e);
+        // Show what the files really hold again (the failed pin goes away).
+        if (get().selectedPath === path && get().scope === "project") {
+          set({ projectFile: null });
+          await get().refreshProjectFile();
+        }
+      }
+    }
   },
   setDraft: (id, value) => set((s) => ({ drafts: { ...s.drafts, [id]: value } })),
-  setTarget: (target) => set({ target }),
+  setTarget(target) {
+    set({ target });
+    // In a project the terminal is remembered with its options; in the defaults it is per session.
+    const { config, selectedPath, scope, opt, origin } = get();
+    if (!config || !selectedPath || scope !== "project") return;
+    const own = findKey(config.projects ?? {}, selectedPath) !== undefined;
+    const pinned = own
+      ? undefined
+      : Object.fromEntries(Object.entries(opt.pinned).filter(([id]) => origin[id] && !isFileOrigin(origin[id])));
+    void get().saveConfig({ projects: withProjectPins(config.projects ?? {}, selectedPath, pinned ? { target, pinned } : { target }) }).then((ok) => {
+      if (ok && !own) set({ origin: Object.fromEntries(Object.entries(get().origin).map(([id, o]) => [id, isFileOrigin(o) ? o : "project"])) });
+    });
+  },
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setAboutOpen: (aboutOpen) => set({ aboutOpen }),
   toggleFavorite(path) {

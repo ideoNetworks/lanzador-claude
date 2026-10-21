@@ -143,6 +143,15 @@ mod tests {
     }
 
     #[test]
+    fn every_interactive_help_flag_is_translated() {
+        // Flags only known from `--help` show English text in every language: none may remain.
+        let help = include_str!("../../docs/reference/claude-help.txt");
+        let merged = merge_help(load_embedded(), help_parser::parse(help));
+        let untranslated: Vec<&str> = merged.iter().filter(|i| i.from_help).map(|i| i.key.as_str()).collect();
+        assert!(untranslated.is_empty(), "add to catalog.json: {untranslated:?}");
+    }
+
+    #[test]
     fn merge_skips_print_only() {
         let help = include_str!("../../docs/reference/claude-help.txt");
         let mut parsed = help_parser::parse(help);

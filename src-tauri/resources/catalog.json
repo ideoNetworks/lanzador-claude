@@ -924,6 +924,504 @@
   }
  },
  {
+  "id": "flag.tools",
+  "kind": "flag",
+  "key": "--tools",
+  "group": "perm",
+  "value": {
+   "kind": "text",
+   "placeholder": "Bash,Edit,Read"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Herramientas disponibles",
+    "t": "Limita las herramientas integradas que puede usar Claude. \"\" las desactiva todas, \"default\" usa el conjunto normal, o indica nombres (p. ej. \"Bash,Edit,Read\")."
+   },
+   "en": {
+    "d": "Available tools",
+    "t": "Limits the built-in tools Claude can use. \"\" disables them all, \"default\" uses the normal set, or list names (e.g. \"Bash,Edit,Read\")."
+   },
+   "zh": {
+    "d": "可用工具",
+    "t": "限制 Claude 可使用的内置工具。\"\" 全部禁用，\"default\" 使用默认集合，或列出名称（例如 \"Bash,Edit,Read\"）。"
+   }
+  }
+ },
+ {
+  "id": "flag.disable-slash-commands",
+  "kind": "flag",
+  "key": "--disable-slash-commands",
+  "group": "ctx",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Desactivar skills y comandos",
+    "t": "Desactiva todas las skills y comandos con barra (/) en esta sesión."
+   },
+   "en": {
+    "d": "Disable skills and commands",
+    "t": "Disables all skills and slash (/) commands in this session."
+   },
+   "zh": {
+    "d": "禁用技能和命令",
+    "t": "在本次会话中禁用所有技能和斜杠（/）命令。"
+   }
+  }
+ },
+ {
+  "id": "flag.session-id",
+  "kind": "flag",
+  "key": "--session-id",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "placeholder": "00000000-0000-0000-0000-000000000000"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "ID de sesión fijo",
+    "t": "Usa un ID de sesión concreto para la conversación. Debe ser un UUID válido."
+   },
+   "en": {
+    "d": "Fixed session ID",
+    "t": "Uses a specific session ID for the conversation. Must be a valid UUID."
+   },
+   "zh": {
+    "d": "固定会话 ID",
+    "t": "为对话使用指定的会话 ID，必须是有效的 UUID。"
+   }
+  }
+ },
+ {
+  "id": "flag.from-pr",
+  "kind": "flag",
+  "key": "--from-pr",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "optional": true,
+   "placeholder": "número o URL del PR (opcional)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Reanudar desde un PR",
+    "t": "Reanuda la sesión vinculada a un pull request por número o URL. Sin valor, abre un selector con búsqueda opcional."
+   },
+   "en": {
+    "d": "Resume from a PR",
+    "t": "Resumes the session linked to a pull request by number or URL. Without a value it opens a picker with optional search."
+   },
+   "zh": {
+    "d": "从 PR 恢复",
+    "t": "按编号或 URL 恢复与拉取请求关联的会话。不填值时打开可搜索的选择器。"
+   }
+  }
+ },
+ {
+  "id": "flag.teleport",
+  "kind": "flag",
+  "key": "--teleport",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "optional": true,
+   "placeholder": "id de sesión (opcional)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Reanudar sesión teleport",
+    "t": "Reanuda una sesión teleport (traída desde la nube); opcionalmente indica su ID."
+   },
+   "en": {
+    "d": "Resume teleport session",
+    "t": "Resumes a teleport session (brought over from the cloud); optionally give its ID."
+   },
+   "zh": {
+    "d": "恢复 teleport 会话",
+    "t": "恢复一个 teleport 会话（从云端转来）；可选择指定其 ID。"
+   }
+  }
+ },
+ {
+  "id": "flag.system-prompt-snapshot",
+  "kind": "flag",
+  "key": "--system-prompt-snapshot",
+  "group": "ctx",
+  "value": {
+   "kind": "select",
+   "options": [
+    "on",
+    "off"
+   ]
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Fijar el prompt de sistema",
+    "t": "on: el prompt de sistema se graba en el primer mensaje y se reutiliza igual en toda la conversación. off: se genera de nuevo en cada petición (útil al iterar el texto)."
+   },
+   "en": {
+    "d": "Snapshot the system prompt",
+    "t": "on: the system prompt is recorded on the first request and reused as-is for the whole conversation. off: it is rendered fresh on every request (useful while iterating on it)."
+   },
+   "zh": {
+    "d": "固定系统提示词",
+    "t": "on：系统提示词在首次请求时记录，整个对话原样复用。off：每次请求重新生成（便于反复修改提示词）。"
+   }
+  }
+ },
+ {
+  "id": "flag.file",
+  "kind": "flag",
+  "key": "--file",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "placeholder": "file_abc:doc.txt"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Descargar archivos al iniciar",
+    "t": "Archivos que se descargan al arrancar, con el formato file_id:ruta_relativa (p. ej. file_abc:doc.txt)."
+   },
+   "en": {
+    "d": "Download files at startup",
+    "t": "Files downloaded at startup, as file_id:relative_path (e.g. file_abc:doc.txt)."
+   },
+   "zh": {
+    "d": "启动时下载文件",
+    "t": "启动时下载的文件，格式为 file_id:相对路径（例如 file_abc:doc.txt）。"
+   }
+  }
+ },
+ {
+  "id": "flag.plugin-url",
+  "kind": "flag",
+  "key": "--plugin-url",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "placeholder": "https://…/plugin.zip"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Plugin desde URL",
+    "t": "Descarga un plugin .zip desde una URL solo para esta sesión."
+   },
+   "en": {
+    "d": "Plugin from URL",
+    "t": "Downloads a plugin .zip from a URL for this session only."
+   },
+   "zh": {
+    "d": "从 URL 加载插件",
+    "t": "仅为本次会话从 URL 下载 .zip 插件。"
+   }
+  }
+ },
+ {
+  "id": "flag.agents",
+  "kind": "flag",
+  "key": "--agents",
+  "group": "ctx",
+  "value": {
+   "kind": "text",
+   "placeholder": "{\"revisor\":{\"description\":\"…\",\"prompt\":\"…\"}}"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Agentes personalizados",
+    "t": "Objeto JSON que define agentes propios para esta sesión (nombre, descripción y prompt de cada uno)."
+   },
+   "en": {
+    "d": "Custom agents",
+    "t": "JSON object defining your own agents for this session (name, description and prompt of each)."
+   },
+   "zh": {
+    "d": "自定义代理",
+    "t": "为本次会话定义自定义代理的 JSON 对象（每个代理的名称、描述和提示词）。"
+   }
+  }
+ },
+ {
+  "id": "flag.exclude-dynamic-system-prompt-sections",
+  "kind": "flag",
+  "key": "--exclude-dynamic-system-prompt-sections",
+  "group": "ctx",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Prompt de sistema reutilizable",
+    "t": "Mueve las partes propias de cada equipo (carpeta, entorno, memoria, estado de git) del prompt de sistema al primer mensaje, para aprovechar mejor la caché entre usuarios."
+   },
+   "en": {
+    "d": "Reusable system prompt",
+    "t": "Moves per-machine sections (folder, environment, memory, git status) from the system prompt into the first message, for better prompt-cache reuse across users."
+   },
+   "zh": {
+    "d": "可复用的系统提示词",
+    "t": "将每台机器特有的部分（目录、环境、记忆、git 状态）从系统提示词移到第一条消息，以便跨用户更好地复用提示缓存。"
+   }
+  }
+ },
+ {
+  "id": "flag.betas",
+  "kind": "flag",
+  "key": "--betas",
+  "group": "model",
+  "value": {
+   "kind": "text",
+   "placeholder": "nombre-de-beta"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Cabeceras beta de la API",
+    "t": "Cabeceras beta que se incluyen en las peticiones a la API. Solo para quien usa clave de API."
+   },
+   "en": {
+    "d": "API beta headers",
+    "t": "Beta headers included in API requests. API key users only."
+   },
+   "zh": {
+    "d": "API beta 请求头",
+    "t": "在 API 请求中附带的 beta 请求头，仅适用于使用 API 密钥的用户。"
+   }
+  }
+ },
+ {
+  "id": "flag.background",
+  "kind": "flag",
+  "key": "--background",
+  "group": "other",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Ejecutar en segundo plano",
+    "t": "Arranca la sesión en segundo plano y vuelve enseguida. Muestra el ID que usan claude attach, logs, stop y rm."
+   },
+   "en": {
+    "d": "Run in background",
+    "t": "Starts the session in the background and returns at once. Prints the ID used by claude attach, logs, stop and rm."
+   },
+   "zh": {
+    "d": "后台运行",
+    "t": "在后台启动会话并立即返回，输出供 claude attach、logs、stop 和 rm 使用的 ID。"
+   }
+  }
+ },
+ {
+  "id": "flag.cloud",
+  "kind": "flag",
+  "key": "--cloud",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "optional": true,
+   "placeholder": "descripción, id o URL (opcional)"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Sesión en la nube",
+    "t": "Crea una sesión en la nube con la descripción dada, o se une a una existente por ID o URL de claude.ai/code."
+   },
+   "en": {
+    "d": "Cloud session",
+    "t": "Creates a cloud session with the given description, or attaches to an existing one by ID or claude.ai/code URL."
+   },
+   "zh": {
+    "d": "云端会话",
+    "t": "使用给定描述创建云端会话，或按 ID 或 claude.ai/code URL 连接到现有会话。"
+   }
+  }
+ },
+ {
+  "id": "flag.environment",
+  "kind": "flag",
+  "key": "--environment",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "placeholder": "ccpool_…"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Entorno propio en la nube",
+    "t": "Crea una sesión en la nube que se ejecuta en el entorno autoalojado indicado (ccpool_…)."
+   },
+   "en": {
+    "d": "Self-hosted cloud environment",
+    "t": "Creates a cloud session that runs on the given self-hosted environment (ccpool_…)."
+   },
+   "zh": {
+    "d": "自托管云环境",
+    "t": "创建在指定自托管环境（ccpool_…）中运行的云端会话。"
+   }
+  }
+ },
+ {
+  "id": "flag.desktop",
+  "kind": "flag",
+  "key": "--desktop",
+  "group": "other",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Abrir en Claude Desktop",
+    "t": "Abre la sesión en la aplicación Claude Desktop en lugar del terminal (con --continue o --resume elige la sesión)."
+   },
+   "en": {
+    "d": "Open in Claude Desktop",
+    "t": "Opens the session in the Claude Desktop app instead of the terminal (with --continue or --resume to pick the session)."
+   },
+   "zh": {
+    "d": "在 Claude Desktop 中打开",
+    "t": "在 Claude Desktop 应用而非终端中打开会话（配合 --continue 或 --resume 选择会话）。"
+   }
+  }
+ },
+ {
+  "id": "flag.brief",
+  "kind": "flag",
+  "key": "--brief",
+  "group": "other",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Mensajes de agente a usuario",
+    "t": "Activa la herramienta SendUserMessage para que el agente pueda enviarte mensajes."
+   },
+   "en": {
+    "d": "Agent-to-user messages",
+    "t": "Enables the SendUserMessage tool so the agent can send you messages."
+   },
+   "zh": {
+    "d": "代理向用户发消息",
+    "t": "启用 SendUserMessage 工具，让代理可以向你发送消息。"
+   }
+  }
+ },
+ {
+  "id": "flag.prompt-suggestions",
+  "kind": "flag",
+  "key": "--prompt-suggestions",
+  "group": "other",
+  "value": {
+   "kind": "select",
+   "options": [
+    "true",
+    "false"
+   ],
+   "optional": true
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Sugerencias de prompt",
+    "t": "Activa o desactiva las sugerencias del siguiente prompt."
+   },
+   "en": {
+    "d": "Prompt suggestions",
+    "t": "Turns suggestions for your next prompt on or off."
+   },
+   "zh": {
+    "d": "提示词建议",
+    "t": "开启或关闭对下一条提示词的建议。"
+   }
+  }
+ },
+ {
+  "id": "flag.remote-control-session-name-prefix",
+  "kind": "flag",
+  "key": "--remote-control-session-name-prefix",
+  "group": "other",
+  "value": {
+   "kind": "text",
+   "placeholder": "mi-equipo"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Prefijo de Remote Control",
+    "t": "Prefijo de los nombres automáticos de las sesiones de Remote Control (por defecto, el nombre del equipo)."
+   },
+   "en": {
+    "d": "Remote Control name prefix",
+    "t": "Prefix for auto-generated Remote Control session names (default: the computer name)."
+   },
+   "zh": {
+    "d": "Remote Control 名称前缀",
+    "t": "自动生成的 Remote Control 会话名称前缀（默认为计算机名）。"
+   }
+  }
+ },
+ {
+  "id": "flag.tmux",
+  "kind": "flag",
+  "key": "--tmux",
+  "group": "other",
+  "value": {
+   "kind": "none"
+  },
+  "dangerous": false,
+  "fromHelp": false,
+  "i18n": {
+   "es": {
+    "d": "Sesión tmux del worktree",
+    "t": "Crea una sesión de tmux para el worktree (requiere --worktree)."
+   },
+   "en": {
+    "d": "Worktree tmux session",
+    "t": "Creates a tmux session for the worktree (requires --worktree)."
+   },
+   "zh": {
+    "d": "worktree 的 tmux 会话",
+    "t": "为 worktree 创建 tmux 会话（需要 --worktree）。"
+   }
+  }
+ },
+ {
   "id": "env.CLAUDE_CODE_USE_POWERSHELL_TOOL",
   "kind": "env",
   "key": "CLAUDE_CODE_USE_POWERSHELL_TOOL",

@@ -12,6 +12,7 @@ use crate::paths;
 const FILE: &str = "config.json";
 const MAX_RECENTS: usize = 10;
 const MAX_HISTORY: usize = 200;
+pub const CONFIG_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -46,6 +47,14 @@ pub struct HistoryEntry {
     pub target: Target,
     pub selection: Selection,
     pub preview: String,
+}
+
+/// Options remembered for one project folder.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct ProjectPrefs {
+    pub pinned: Selection,
+    pub target: Option<Target>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -91,7 +100,14 @@ pub struct AppConfig {
     pub recents: Vec<String>,
     pub profiles: Vec<Profile>,
     pub active_profile: Option<String>,
+    /// Legacy (v1): folder -> profile id. Migrated into `projects` on load.
     pub folder_profiles: BTreeMap<String, String>,
+    /// Folder path -> its own pinned options and target (subfolders inherit them).
+    pub projects: BTreeMap<String, ProjectPrefs>,
+    /// Manual override of project detection: path -> is a project.
+    pub project_marks: BTreeMap<String, bool>,
+    /// Clicking a project in the tree also expands it (off: only its + button does).
+    pub expand_projects_on_click: bool,
     pub history: Vec<HistoryEntry>,
     pub first_run_done: bool,
 }
@@ -121,7 +137,7 @@ pub fn builtin_profiles() -> Vec<Profile> {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: CONFIG_VERSION,
             language: None,
             theme: "system".into(),
             root_folder: "C:\\Desarrollo".into(),
@@ -141,6 +157,9 @@ impl Default for AppConfig {
             profiles: builtin_profiles(),
             active_profile: None,
             folder_profiles: BTreeMap::new(),
+            projects: BTreeMap::new(),
+            project_marks: BTreeMap::new(),
+            expand_projects_on_click: false,
             history: Vec::new(),
             first_run_done: false,
         }
@@ -174,7 +193,10 @@ pub fn load_outcome_from(dir: &Path) -> (AppConfig, LoadOutcome) {
         }
     };
     match serde_json::from_str::<AppConfig>(&text) {
-        Ok(c) => (c, LoadOutcome::Ok),
+        Ok(mut c) => {
+            migrate(&mut c);
+            (c, LoadOutcome::Ok)
+        }
         Err(e) => {
             eprintln!("config: corrupt {}: {e}", file.display());
             let bak = dir.join(format!("{FILE}.bak"));
@@ -185,6 +207,17 @@ pub fn load_outcome_from(dir: &Path) -> (AppConfig, LoadOutcome) {
             (AppConfig::default(), LoadOutcome::Recovered)
         }
     }
+}
+
+/// v1 -> v2: each folder default profile becomes that folder's own options.
+pub fn migrate(c: &mut AppConfig) {
+    for (path, id) in std::mem::take(&mut c.folder_profiles) {
+        let Some(p) = c.profiles.iter().find(|p| p.id == id) else { continue };
+        if !c.projects.keys().any(|k| k.eq_ignore_ascii_case(&path)) {
+            c.projects.insert(path, ProjectPrefs { pinned: p.selection.clone(), target: Some(p.target) });
+        }
+    }
+    c.version = c.version.max(CONFIG_VERSION);
 }
 
 pub fn load_from(dir: &Path) -> AppConfig {
@@ -495,6 +528,26 @@ mod tests {
         save_to(d.path(), &c).unwrap();
         assert!(!d.path().join("config.json.tmp").exists());
         assert_eq!(load_from(d.path()), c);
+    }
+
+    #[test]
+    fn v1_folder_profiles_become_project_options() {
+        let d = tempfile::tempdir().unwrap();
+        std::fs::write(
+            d.path().join(FILE),
+            r#"{"version":1,"profiles":[{"id":"u","name":"U","selection":{"flag.model":"opus"},"target":"powershell"}],
+               "folderProfiles":{"C:\\P":"u","C:\\Gone":"missing"},
+               "projects":{"c:\\q":{"pinned":{"flag.verbose":null}}}}"#,
+        )
+        .unwrap();
+        let c = load_from(d.path());
+        assert_eq!(c.version, CONFIG_VERSION);
+        assert!(c.folder_profiles.is_empty());
+        let p = &c.projects[r"C:\P"];
+        assert_eq!(p.pinned["flag.model"].as_deref(), Some("opus"));
+        assert_eq!(p.target, Some(Target::Powershell));
+        assert_eq!(c.projects.len(), 2, "unknown profile skipped, existing project kept");
+        assert!(!c.expand_projects_on_click);
     }
 
     #[test]

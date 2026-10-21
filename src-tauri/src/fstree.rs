@@ -10,6 +10,9 @@ pub struct DirEntry {
     pub path: String,
     pub has_children: bool,
     pub hidden: bool,
+    /// Detected project kind: `"claude"` (CLAUDE.md or .claude), `"code"` (git, package
+    /// manifest, solution...) or `None`.
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -42,11 +45,47 @@ fn classify(meta: &std::fs::Metadata) -> (bool, bool, bool) {
     (meta.is_dir() || link, link, false)
 }
 
-fn has_subdir(dir: &std::path::Path) -> bool {
-    let Ok(rd) = std::fs::read_dir(dir) else { return false };
-    rd.take(PROBE_LIMIT).flatten().any(|e| {
-        std::fs::symlink_metadata(e.path()).map(|m| classify(&m).0).unwrap_or(false)
-    })
+/// Entry names that make a folder a Claude project.
+const CLAUDE_MARKERS: [&str; 2] = ["claude.md", ".claude"];
+/// Entry names that make a folder a code project.
+const CODE_MARKERS: [&str; 12] = [
+    ".git", "package.json", "cargo.toml", "pyproject.toml", "go.mod", "pom.xml", "composer.json",
+    "build.gradle", "build.gradle.kts", "requirements.txt", "gemfile", "deno.json",
+];
+/// Extensions of Visual Studio / .NET project files.
+const CODE_EXTS: [&str; 4] = [".sln", ".slnx", ".csproj", ".vcxproj"];
+
+/// Project kind revealed by one entry name (`None` when it is no marker).
+fn marker_kind(name: &str) -> Option<&'static str> {
+    let n = name.to_ascii_lowercase();
+    if CLAUDE_MARKERS.contains(&n.as_str()) {
+        Some("claude")
+    } else if CODE_MARKERS.contains(&n.as_str()) || CODE_EXTS.iter().any(|e| n.ends_with(e)) {
+        Some("code")
+    } else {
+        None
+    }
+}
+
+/// One pass over (at most `PROBE_LIMIT`) entries of `dir`: whether it has a subfolder and which
+/// project kind its marker files reveal. Markers are matched by name only (no extra I/O).
+fn probe(dir: &std::path::Path) -> (bool, Option<&'static str>) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return (false, None) };
+    let (mut sub, mut kind) = (false, None);
+    for e in rd.take(PROBE_LIMIT).flatten() {
+        match marker_kind(&e.file_name().to_string_lossy()) {
+            Some("claude") => kind = Some("claude"),
+            Some(k) if kind.is_none() => kind = Some(k),
+            _ => {}
+        }
+        if !sub {
+            sub = std::fs::symlink_metadata(e.path()).map(|m| classify(&m).0).unwrap_or(false);
+        }
+        if sub && kind == Some("claude") {
+            break;
+        }
+    }
+    (sub, kind)
 }
 
 fn io_error(e: &std::io::Error) -> AppError {
@@ -81,8 +120,14 @@ pub fn list_dir(path: &str, show_hidden: bool) -> AppResult<Vec<DirEntry>> {
         if hidden && !show_hidden {
             continue;
         }
-        let has_children = !reparse && has_subdir(&full);
-        out.push(DirEntry { name, path: full.to_string_lossy().into_owned(), has_children, hidden });
+        let (has_children, project) = if reparse { (false, None) } else { probe(&full) };
+        out.push(DirEntry {
+            name,
+            path: full.to_string_lossy().into_owned(),
+            has_children,
+            hidden,
+            project: project.map(str::to_string),
+        });
     }
     out.sort_by_cached_key(|e| e.name.to_lowercase());
     Ok(out)
@@ -175,6 +220,28 @@ mod tests {
         assert!(!v[0].has_children);
         assert!(v[2].has_children);
         assert_eq!(Path::new(&v[2].path), d.path().join("gamma"));
+    }
+
+    #[test]
+    fn detects_project_kinds() {
+        let d = tempfile::tempdir().unwrap();
+        for n in ["plain", "web", "app", "net", "both"] {
+            std::fs::create_dir(d.path().join(n)).unwrap();
+        }
+        std::fs::create_dir(d.path().join("plain").join("docs")).unwrap();
+        std::fs::write(d.path().join("web").join("package.json"), "{}").unwrap();
+        std::fs::write(d.path().join("app").join("CLAUDE.md"), "#").unwrap();
+        std::fs::write(d.path().join("net").join("Tool.SLN"), "").unwrap();
+        std::fs::create_dir(d.path().join("both").join(".git")).unwrap();
+        std::fs::create_dir(d.path().join("both").join(".claude")).unwrap();
+        let v = list_dir(d.path().to_str().unwrap(), false).unwrap();
+        let kind = |n: &str| v.iter().find(|e| e.name == n).unwrap().project.clone();
+        assert_eq!(kind("plain"), None);
+        assert_eq!(kind("web").as_deref(), Some("code"));
+        assert_eq!(kind("app").as_deref(), Some("claude"));
+        assert_eq!(kind("net").as_deref(), Some("code"));
+        assert_eq!(kind("both").as_deref(), Some("claude"), "claude markers win");
+        assert!(v.iter().find(|e| e.name == "both").unwrap().has_children);
     }
 
     #[test]
