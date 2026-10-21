@@ -1,15 +1,18 @@
 import type { LaunchRequest, Selection, Target } from "../api";
 import type { OptState } from "./checkboxes";
+import { launchSelection, type Origin } from "./projects";
 
 export interface LaunchExtras { extra?: Selection; resumeId?: string | null }
 
-/** The request the UI would launch right now (null without a folder). */
+/** The request the UI would launch right now (null without a folder). Options Claude reads from
+ * the project's settings files are left to it (see `launchSelection`). */
 export function currentRequest(
-  s: { selectedPath: string | null; target: Target; opt: OptState },
+  s: { selectedPath: string | null; target: Target; opt: OptState; origin?: Record<string, Origin> },
   x: LaunchExtras = {},
 ): LaunchRequest | null {
   if (!s.selectedPath) return null;
-  return { path: s.selectedPath, target: s.target, selection: { ...s.opt.active, ...x.extra }, resumeId: x.resumeId ?? null };
+  const selection = { ...launchSelection(s.opt, s.origin ?? {}), ...x.extra };
+  return { path: s.selectedPath, target: s.target, selection, resumeId: x.resumeId ?? null };
 }
 
 /** Stable serialization: selection keys sorted, so equal requests give equal keys. */

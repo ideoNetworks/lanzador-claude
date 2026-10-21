@@ -161,14 +161,53 @@ describe("store config safety", () => {
     expect(useStore.getState().opt.pinned).toEqual({ "flag.debug": null });
   });
 
-  it("re-selecting the same folder does not re-apply its profile", () => {
-    const profile = { id: "p", name: "P", builtin: false, selection: { "flag.model": "opus" }, target: "wt" as const };
-    useStore.setState({ config: { ...cfg, profiles: [profile], folderProfiles: { "C:\\x": "p" }, activeProfile: "p" } as AppConfig });
-    useStore.getState().selectPath("C:\\x");
+  it("a project shows its own options; re-selecting it keeps the changes made since", () => {
+    const projects = { "C:\\x": { pinned: { "flag.model": "opus" }, target: "powershell" as const } };
+    useStore.setState({ config: { ...cfg, projects, defaultTarget: "wt" } as unknown as AppConfig });
+    useStore.getState().selectPath("c:\\X");
     expect(useStore.getState().opt.active).toEqual({ "flag.model": "opus" });
+    expect(useStore.getState().target).toBe("powershell");
+    expect(useStore.getState().scope).toBe("project");
     useStore.setState({ opt: { active: { "flag.model": "sonnet", "flag.debug": null }, pinned: {} } });
-    useStore.getState().selectPath("C:\\x");
+    useStore.getState().selectPath("c:\\X");
     expect(useStore.getState().opt.active).toEqual({ "flag.model": "sonnet", "flag.debug": null });
+  });
+
+  it("a subfolder inherits; pinning there creates its own copy and leaves the parent alone", () => {
+    const projects = { "C:\\x": { pinned: { "flag.model": "opus" }, target: null } };
+    useStore.setState({ config: { ...cfg, pinned: { "flag.verbose": null }, projects, defaultTarget: "wt" } as unknown as AppConfig });
+    useStore.getState().selectPath("C:\\x\\web");
+    expect(useStore.getState().opt.pinned).toEqual({ "flag.model": "opus" });
+    expect(useStore.getState().origin["flag.model"]).toBe("inherited");
+    const o = useStore.getState().opt;
+    useStore.getState().updateOpt({ active: { ...o.active, "flag.debug": null }, pinned: { ...o.pinned, "flag.debug": null } });
+    void useStore.getState().flushPinned();
+    const saved = useStore.getState().config!.projects;
+    expect(saved["C:\\x\\web"].pinned).toEqual({ "flag.model": "opus", "flag.debug": null });
+    expect(saved["C:\\x"].pinned).toEqual({ "flag.model": "opus" });
+    expect(useStore.getState().config!.pinned).toEqual({ "flag.verbose": null });
+  });
+
+  it("the defaults scope edits config.pinned, and a folder without options uses them", () => {
+    useStore.setState({ config: { ...cfg, pinned: { "flag.verbose": null }, projects: {}, defaultTarget: "wt" } as unknown as AppConfig });
+    useStore.getState().selectPath("C:\\nuevo");
+    expect(useStore.getState().opt.pinned).toEqual({ "flag.verbose": null });
+    expect(useStore.getState().origin["flag.verbose"]).toBe("defaults");
+    useStore.getState().setScope("defaults");
+    const o = useStore.getState().opt;
+    useStore.getState().updateOpt({ active: { ...o.active, "flag.ide": null }, pinned: { ...o.pinned, "flag.ide": null } });
+    void useStore.getState().flushPinned();
+    expect(useStore.getState().config!.pinned).toEqual({ "flag.verbose": null, "flag.ide": null });
+    expect(useStore.getState().config!.projects).toEqual({});
+  });
+
+  it("resetProjectOptions drops the project's own options", async () => {
+    const projects = { "C:\\x": { pinned: { "flag.model": "opus" }, target: null } };
+    useStore.setState({ config: { ...cfg, pinned: {}, projects, defaultTarget: "wt" } as unknown as AppConfig });
+    useStore.getState().selectPath("C:\\x");
+    await useStore.getState().resetProjectOptions();
+    expect(useStore.getState().config!.projects).toEqual({});
+    expect(useStore.getState().opt.pinned).toEqual({});
   });
 
   it("an unreadable config blocks the UI instead of toasting, and a good retry clears it", async () => {

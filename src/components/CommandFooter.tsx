@@ -4,6 +4,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n";
 import { errorText } from "../i18n/errors";
 import { currentRequest, previewKey } from "../logic/request";
+import { fromFileCount } from "../logic/projects";
 import { icons } from "./icons";
 
 export const PREVIEW_DEBOUNCE_MS = 150;
@@ -13,7 +14,8 @@ export default function CommandFooter() {
   const t = useT();
   const path = useStore((s) => s.selectedPath);
   const target = useStore((s) => s.target);
-  const active = useStore((s) => s.opt.active);
+  const opt = useStore((s) => s.opt);
+  const origin = useStore((s) => s.origin);
   const launching = useStore((s) => s.launching);
   const preview = useStore((s) => s.preview);
   const previewRev = useStore((s) => s.previewRev);
@@ -23,7 +25,8 @@ export default function CommandFooter() {
   const showError = useStore((s) => s.showError);
   const cmdRef = useRef<HTMLDivElement>(null);
 
-  const request = useMemo(() => currentRequest({ selectedPath: path, target, opt: { active, pinned: {} } }), [path, target, active]);
+  const request = useMemo(() => currentRequest({ selectedPath: path, target, opt, origin }), [path, target, opt, origin]);
+  const fromFile = path ? fromFileCount(opt, origin) : 0;
   // Secrets saved/deleted and catalog arrivals bump previewRev: same request, new preview.
   const key = previewKey(request, previewRev);
 
@@ -82,6 +85,9 @@ export default function CommandFooter() {
       >
         {path ? (current ?? preview)?.text ?? " " : t("foot.noPath")}
       </div>
+      {fromFile > 0 && (
+        <span className="fromfile" title={t("foot.fromFileTip")}>{t("foot.fromFile", { n: fromFile })}</span>
+      )}
       <button className="btn" onClick={() => void copy()} disabled={!ready}>
         {icons.copy}
         {t("foot.copy")}

@@ -17,27 +17,13 @@ export function renameProfile(profiles: Profile[], id: string, name: string): Pr
   return profiles.map((p) => (p.id === id && !p.builtin ? { ...p, name: name.trim() } : p));
 }
 
-/** Removes a user profile and every reference to it (active profile, folder defaults). Builtins give null. */
-export function removeProfile(config: Pick<AppConfig, "profiles" | "activeProfile" | "folderProfiles">, id: string) {
+/** Removes a user profile and the reference to it (active profile). Builtins give null. */
+export function removeProfile(config: Pick<AppConfig, "profiles" | "activeProfile">, id: string) {
   const target = config.profiles.find((p) => p.id === id);
   if (!target || target.builtin) return null;
   return {
     profiles: config.profiles.filter((p) => p.id !== id),
     activeProfile: config.activeProfile === id ? null : config.activeProfile,
-    folderProfiles: Object.fromEntries(Object.entries(config.folderProfiles).filter(([, v]) => v !== id)),
   };
 }
-
-/** Folder-profile key lookup tolerant to case (Windows paths). */
-export function folderProfileKey(map: Record<string, string>, path: string): string | undefined {
-  const p = path.toLowerCase();
-  return Object.keys(map).find((k) => k.toLowerCase() === p);
-}
-
-/** Toggles `path -> id`: set when it is not the current default, removed when it is. */
-export function toggleFolderProfile(map: Record<string, string>, path: string, id: string): Record<string, string> {
-  const key = folderProfileKey(map, path);
-  const next = Object.fromEntries(Object.entries(map).filter(([k]) => k !== key));
-  if (key !== undefined && map[key] === id) return next;
-  return { ...next, [path]: id };
-}
+

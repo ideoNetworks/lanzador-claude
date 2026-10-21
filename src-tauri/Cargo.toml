@@ -1,6 +1,6 @@
 [package]
 name = "lanzador-claude"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lanzador Claude - launcher for Claude Code"
 authors = ["iDeo Networks"]
 license = "GPL-3.0-only"
@@ -23,7 +23,7 @@ tauri = { version = "2", features = ["image-png", "image-ico", "tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 sys-locale = "0.3"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 sha2 = "0.10"

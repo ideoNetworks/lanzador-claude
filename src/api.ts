@@ -6,6 +6,7 @@ export type Lang = "es" | "en" | "zh";
 export type ViewId = "launch" | "new" | "profiles" | "skills" | "history" | "settings";
 
 export interface Profile { id: string; name: string; builtin: boolean; selection: Selection; target: Target }
+export interface ProjectPrefs { pinned: Selection; target: Target | null }
 export interface HistoryEntry { at: string; path: string; profile: string | null; target: Target; selection: Selection; preview: string }
 export interface Branding { logoPath: string | null; trayIconPath: string | null; primaryColor: string | null }
 export interface Updates { mode: string; endpoint: string | null }
@@ -14,7 +15,8 @@ export interface AppConfig {
   navCollapsed: boolean; closeToTray: boolean; autostart: boolean; shortcut: string; defaultTarget: Target;
   skillsRepoUrl: string; explorerMenu: boolean; updates: Updates; branding: Branding; pinned: Selection;
   favorites: string[]; recents: string[]; profiles: Profile[]; activeProfile: string | null;
-  folderProfiles: Record<string, string>; history: HistoryEntry[]; firstRunDone: boolean;
+  folderProfiles: Record<string, string>; projects: Record<string, ProjectPrefs>; projectMarks: Record<string, boolean>;
+  expandProjectsOnClick: boolean; history: HistoryEntry[]; firstRunDone: boolean;
 }
 export interface ValueSpec { kind: string; options: string[]; fixed: string | null; placeholder: string | null; optional: boolean }
 export interface I18nText { d: string; t: string }
@@ -24,7 +26,10 @@ export interface CatalogItem {
 }
 export interface LaunchRequest { path: string; target: Target; selection: Selection; resumeId: string | null }
 export interface LaunchPlan { preview: string; program: string; args: string[]; script: string | null; scriptPath: string | null; cwd: string }
-export interface DirEntry { name: string; path: string; hasChildren: boolean; hidden: boolean }
+export interface DirEntry { name: string; path: string; hasChildren: boolean; hidden: boolean; project?: "claude" | "code" | null }
+/** One option found in Claude's settings files; `sources` most specific first. */
+export interface SettingEntry { id: string; value: string | null; sources: ("local" | "shared" | "user")[] }
+export interface ProjectSettings { entries: SettingEntry[]; mappable: string[]; broken: string[] }
 export interface DriveEntry { path: string; label: string; kind: "fixed" | "removable" | "network" | "other" }
 export interface FolderInfo {
   path: string; exists: boolean; gitBranch: string | null; hasClaudeMd: boolean;
@@ -70,6 +75,9 @@ export const createProject = (req: NewProjectRequest) => invoke<CreateResult>("c
 // Task 12
 export const openVscode = (path: string) => invoke<void>("open_vscode", { path });
 export const openExplorer = (path: string) => invoke<void>("open_explorer", { path });
+export const projectSettings = (path: string) => invoke<ProjectSettings>("project_settings", { path });
+export const projectSettingsApply = (path: string, set: Selection, remove: string[], removeShared: boolean) =>
+  invoke<ProjectSettings>("project_settings_apply", { path, set, remove, removeShared });
 export const setAutostart = (enabled: boolean) => invoke<void>("set_autostart", { enabled });
 export const setShortcut = (shortcut: string) => invoke<void>("set_shortcut", { shortcut });
 export const setExplorerMenu = (enabled: boolean) => invoke<void>("set_explorer_menu", { enabled });

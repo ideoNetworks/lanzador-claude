@@ -14,10 +14,11 @@ export function togglePin(s: OptState, id: string, value: string | null): OptSta
   return { active: { ...s.active, [id]: value }, pinned: { ...s.pinned, [id]: value } };
 }
 
-/** Active box: unchecking clears both; checking without pin is session-only. */
+/** Active box: unchecking a pinned option turns it off just for this launch (it stays pinned and
+ * comes back on next time); checking without pin is session-only. */
 export function toggleActive(s: OptState, id: string, value: string | null): OptState {
-  if (id in s.active) return { active: without(s.active, id), pinned: without(s.pinned, id) };
-  return { active: { ...s.active, [id]: value }, pinned: s.pinned };
+  if (id in s.active) return { active: without(s.active, id), pinned: s.pinned };
+  return { active: { ...s.active, [id]: id in s.pinned ? s.pinned[id] : value }, pinned: s.pinned };
 }
 
 /** Changing a value activates the option and updates the remembered value if pinned. */

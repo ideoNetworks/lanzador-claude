@@ -1,6 +1,7 @@
 pub mod command;
 pub mod commands;
 pub mod catalog;
+pub mod claude_settings;
 pub mod config;
 pub mod error;
 pub mod folderinfo;
@@ -91,6 +92,8 @@ pub fn run() {
             commands::create_project,
             commands::open_vscode,
             commands::open_explorer,
+            commands::project_settings,
+            commands::project_settings_apply,
             integration::set_autostart,
             integration::take_pending_open,
             integration::take_pending_update,

@@ -14,10 +14,17 @@ describe("checkbox rules (spec 4.2)", () => {
     expect(s.pinned).toEqual({});
     expect(s.active).toEqual({});
   });
-  it("unchecking active clears both", () => {
-    const s = toggleActive({ active: { a: null }, pinned: { a: null } }, "a", null);
-    expect(s.pinned).toEqual({});
+  it("unchecking active on a pinned option turns it off just this time (stays pinned)", () => {
+    const s = toggleActive({ active: { a: "x" }, pinned: { a: "x" } }, "a", null);
+    expect(s.pinned).toEqual({ a: "x" });
     expect(s.active).toEqual({});
+    const back = toggleActive(s, "a", "other");
+    // Re-checking brings back the pinned value.
+    expect(back.active).toEqual({ a: "x" });
+  });
+  it("unchecking active on a session-only option clears it", () => {
+    const s = toggleActive({ active: { a: null }, pinned: {} }, "a", null);
+    expect(s).toEqual({ active: {}, pinned: {} });
   });
   it("checking active without pin is active only", () => {
     const s = toggleActive(empty, "a", null);

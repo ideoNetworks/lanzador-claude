@@ -10,9 +10,10 @@ Nació en el departamento de **Mantenimiento Informático** de iDeo y lo ha desa
 
 ## Características
 
-- Árbol de carpetas (por defecto `C:\Desarrollo`, navegable por todo el disco), con recientes y favoritos.
+- Árbol de carpetas (por defecto `C:\Desarrollo`, navegable por todo el disco), con recientes y favoritos. Los **proyectos** (con `CLAUDE.md`, `.claude`, `.git`, `package.json`, `*.sln`…) llevan su propio icono y no se despliegan al elegirlos: sus subcarpetas se abren con el botón **+**.
 - Ficha de carpeta: sesiones de Claude, rama git, `CLAUDE.md`, skills; botones **Continuar última** y **Reanudar…**.
-- Parámetros y variables de entorno con **doble casilla**: morada (fijar, se recuerda) y azul (activar). Cada opción tiene su explicación en un tooltip.
+- Parámetros y variables de entorno con **doble casilla**: morada (fijar, se recuerda) y azul (activar). Quitar la azul de una opción fijada la desactiva **solo esta vez**. Cada opción tiene su explicación en un tooltip, en el idioma de la interfaz.
+- **Opciones por proyecto**: cada proyecto recuerda las suyas (las subcarpetas heredan las de su proyecto) y hay unas **por defecto** para el resto. Las que tienen equivalente en Claude Code (modelo, modo de permisos, herramientas, carpetas extra, variables de entorno) se leen y se guardan en `.claude/settings.local.json` del proyecto; también se muestran las de `.claude/settings.json` (equipo) y `~/.claude/settings.json` (usuario).
 - Vista previa exacta del comando que se va a ejecutar, con copiar y abrir en VS Code.
 - Perfiles (Seguro, Autónomo, PowerShell + Opus y los tuyos) e historial con relanzamiento en un clic.
 - Asistente de proyecto nuevo: carpeta, `CLAUDE.md` desde plantilla, skills, `git init` y aviso de fin de tarea.

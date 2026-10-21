@@ -3,7 +3,7 @@ import type { Profile } from "../api";
 import { useStore } from "../store";
 import { useT } from "../i18n";
 import { applyProfile } from "../logic/selection";
-import { createProfile, folderProfileKey, nameTaken, removeProfile, renameProfile, toggleFolderProfile } from "../logic/profiles";
+import { createProfile, nameTaken, removeProfile, renameProfile } from "../logic/profiles";
 import { profileName } from "../components/OptionsPanel";
 
 type Mode = { kind: "rename"; id: string; name: string } | { kind: "delete"; id: string } | null;
@@ -26,7 +26,7 @@ export default function ProfilesView() {
   const [mode, setMode] = useState<Mode>(null);
 
   if (!config) return null;
-  const { profiles, activeProfile, folderProfiles } = config;
+  const { profiles, activeProfile } = config;
   const nameOf = (p: Profile) => profileName(p, t);
   const activeCount = Object.keys(opt.active).length;
 
@@ -63,12 +63,19 @@ export default function ProfilesView() {
     setMode(null);
   };
 
-  const toggleFolder = (p: Profile) => {
+  /** Pins the profile's options in the selected project (settings.local.json or its launcher options). */
+  const applyToProject = (p: Profile) => {
     if (!selectedPath) return;
-    void saveConfig({ folderProfiles: toggleFolderProfile(folderProfiles, selectedPath, p.id) });
+    const s = useStore.getState();
+    s.setScope("project");
+    const cur = useStore.getState().opt;
+    updateOpt({ active: { ...cur.active, ...p.selection }, pinned: { ...cur.pinned, ...p.selection } });
+    setTarget(p.target);
+    void useStore.getState().flushPinned();
+    void saveConfig({ activeProfile: p.id });
+    showToast(t("profiles.appliedProject", { name: nameOf(p), path: selectedPath }));
+    setView("launch");
   };
-
-  const folderKey = selectedPath ? folderProfileKey(folderProfiles, selectedPath) : undefined;
 
   return (
     <section className="view">
@@ -82,7 +89,7 @@ export default function ProfilesView() {
         )}
       </div>
 
-      {!selectedPath && profiles.length > 0 && <p className="hint">{t("profiles.folderNone")}</p>}
+      {!selectedPath && profiles.length > 0 && <p className="hint">{t("profiles.projectNone")}</p>}
 
       {creating && (
         <form className="newbox" onSubmit={(e) => { e.preventDefault(); create(); }}>
@@ -108,7 +115,6 @@ export default function ProfilesView() {
       {profiles.length === 0 && <div className="empty">{t("profiles.empty")}</div>}
       <ul className="cards">
         {profiles.map((p) => {
-          const isDefault = !!selectedPath && folderKey !== undefined && folderProfiles[folderKey] === p.id;
           const renaming = mode?.kind === "rename" && mode.id === p.id ? mode : null;
           const deleting = mode?.kind === "delete" && mode.id === p.id;
           return (
@@ -145,6 +151,7 @@ export default function ProfilesView() {
                     ) : (
                       <>
                         <button className="btn pri sm" onClick={() => apply(p)}>{t("profiles.apply")}</button>
+                        <button className="btn sm" disabled={!selectedPath} title={selectedPath ? selectedPath : t("profiles.projectNone")} onClick={() => applyToProject(p)}>{t("profiles.applyProject")}</button>
                         {!p.builtin && (
                           <>
                             <button className="btn sm" onClick={() => setMode({ kind: "rename", id: p.id, name: p.name })}>{t("profiles.rename")}</button>
@@ -155,13 +162,6 @@ export default function ProfilesView() {
                     )}
                   </div>
                 )}
-              </div>
-              <div className="card-foot">
-                <label className="chk" title={selectedPath ? undefined : t("profiles.folderNone")}>
-                  <input type="checkbox" checked={isDefault} disabled={!selectedPath} onChange={() => toggleFolder(p)} />
-                  <span>{t("profiles.folderDefault")}</span>
-                </label>
-                {isDefault && <span className="hint">{t("profiles.folderHint", { path: selectedPath ?? "" })}</span>}
               </div>
             </li>
           );

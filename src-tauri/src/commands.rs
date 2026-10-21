@@ -85,7 +85,8 @@ pub fn export_config(path: String) -> AppResult<()> {
 #[tauri::command]
 pub fn import_config(path: String) -> AppResult<AppConfig> {
     let text = std::fs::read_to_string(path)?;
-    let cfg: AppConfig = serde_json::from_str(&text).map_err(|e| AppError::new("config_invalid", e.to_string()))?;
+    let mut cfg: AppConfig = serde_json::from_str(&text).map_err(|e| AppError::new("config_invalid", e.to_string()))?;
+    config::migrate(&mut cfg);
     config::save(&cfg)?;
     Ok(cfg)
 }
@@ -398,6 +399,39 @@ pub async fn open_explorer(path: String) -> AppResult<()> {
         #[cfg(not(windows))]
         cmd.arg(&path);
         cmd.spawn().map(|_| ()).map_err(|e| AppError::new("launch_failed", e.to_string()))
+    })
+    .await?
+}
+
+/// Options the project keeps in Claude Code's settings files (project, local and user).
+#[tauri::command]
+pub async fn project_settings(
+    cache: tauri::State<'_, CatalogCache>,
+    path: String,
+) -> AppResult<crate::claude_settings::ProjectSettings> {
+    let items = cache.items();
+    blocking(move || {
+        require_dir(&path)?;
+        Ok(crate::claude_settings::read(std::path::Path::new(&path), &crate::paths::claude_home(), &items))
+    })
+    .await?
+}
+
+/// Pins `set` into the project's `settings.local.json` and unpins `remove` (also from the
+/// shared `settings.json` when `remove_shared`); returns the settings as now read.
+#[tauri::command]
+pub async fn project_settings_apply(
+    cache: tauri::State<'_, CatalogCache>,
+    path: String,
+    set: config::Selection,
+    remove: Vec<String>,
+    remove_shared: bool,
+) -> AppResult<crate::claude_settings::ProjectSettings> {
+    let items = cache.items();
+    blocking(move || {
+        require_dir(&path)?;
+        let home = crate::paths::claude_home();
+        crate::claude_settings::apply(std::path::Path::new(&path), &home, &items, &set, &remove, remove_shared)
     })
     .await?
 }

@@ -4,11 +4,14 @@ import { useStore } from "../store";
 import { getLanguage, hasKey, useT } from "../i18n";
 import { applyProfile, countByKind } from "../logic/selection";
 import { filterOptions, groupItems, sameSelection } from "../logic/options";
+import { resolvePrefs } from "../logic/projects";
+import { baseName } from "../logic/tree";
 import OptionRow from "./OptionRow";
 import { icons } from "./icons";
 
 const TARGETS: Target[] = ["wt", "powershell", "wsl"];
 const NO_PROFILES: Profile[] = [];
+const NO_FILES: string[] = [];
 
 export const profileName = (p: Profile, t: (k: string) => string) =>
   p.builtin && hasKey(`profiles.builtin.${p.id}`) ? t(`profiles.builtin.${p.id}`) : p.name;
@@ -41,6 +44,55 @@ function SaveProfile({ onDone }: { onDone: () => void }) {
       <button className="btn sm pri" type="submit" disabled={!name.trim()}>{t("common.save")}</button>
       <button className="btn sm" type="button" onClick={onDone}>{t("common.cancel")}</button>
     </form>
+  );
+}
+
+/** Whose options are shown and saved (this project / the defaults), with their status. */
+function ScopeBar() {
+  const t = useT();
+  const scope = useStore((s) => s.scope);
+  const setScope = useStore((s) => s.setScope);
+  const path = useStore((s) => s.selectedPath);
+  const projects = useStore((s) => s.config?.projects);
+  const broken = useStore((s) => (s.projectFile && s.projectFile.path === s.selectedPath ? s.projectFile.settings.broken : NO_FILES));
+  const resetProjectOptions = useStore((s) => s.resetProjectOptions);
+  const useAsDefaults = useStore((s) => s.useAsDefaults);
+  const showToast = useStore((s) => s.showToast);
+  const resolved = path ? resolvePrefs(projects ?? {}, path) : null;
+  const status =
+    scope === "defaults" ? t("scope.defaultsNote")
+      : !resolved ? t("scope.usingDefaults")
+        : resolved.own ? t("scope.own") : t("scope.inherited", { name: baseName(resolved.key) });
+  const files = broken.map((b) => (b === "user" ? "~/.claude/settings.json" : b === "local" ? ".claude/settings.local.json" : ".claude/settings.json"));
+
+  return (
+    <>
+      <div className="scopebar">
+        <span className="scope-lbl">{t("scope.label")}</span>
+        <div className="seg" role="radiogroup" aria-label={t("scope.label")}>
+          <button type="button" role="radio" aria-checked={scope === "project"} disabled={!path} title={path ? undefined : t("scope.noPath")} onClick={() => setScope("project")}>
+            {t("scope.project")}
+          </button>
+          <button type="button" role="radio" aria-checked={scope === "defaults"} onClick={() => setScope("defaults")}>
+            {t("scope.defaults")}
+          </button>
+        </div>
+        <span className={`scope-st${scope === "project" && resolved?.own ? " own" : ""}`}>{status}</span>
+        {scope === "project" && resolved?.own && (
+          <button className="lnk" title={t("scope.resetTip")} onClick={() => void resetProjectOptions().then(() => showToast(t("scope.resetDone")))}>
+            {t("scope.reset")}
+          </button>
+        )}
+        {scope === "project" && (
+          <button className="lnk" title={t("scope.useAsDefaultTip")} onClick={() => void useAsDefaults().then(() => showToast(t("scope.defaultsSaved")))}>
+            {t("scope.useAsDefault")}
+          </button>
+        )}
+      </div>
+      {scope === "project" && files.length > 0 && (
+        <div className="scope-warn" role="alert">{icons.warn}{t("opts.broken", { files: files.join(", ") })}</div>
+      )}
+    </>
   );
 }
 
@@ -83,6 +135,7 @@ export default function OptionsPanel() {
 
   return (
     <>
+      <ScopeBar />
       <div className="tabs">
         <div role="tablist" className="tablist">
           {tabBtn("flag", t("opts.tabFlags"))}

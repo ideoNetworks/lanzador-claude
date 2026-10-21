@@ -36,4 +36,17 @@ export const icons: Record<string, ReactElement> = {
   x: <svg {...S}><path d="M6 6l12 12M18 6L6 18" /></svg>,
   down: <svg {...S} strokeWidth={2.5}><path d="M6 9l6 6 6-6" /></svg>,
   filter: <svg {...S}><path d="M3 5h18l-7 8v6l-4-2v-4z" /></svg>,
+  // Project folders: the folder shape with a mark cut out (`.cut` takes the row background).
+  projCode: (
+    <svg {...S} className="icon proj code">
+      <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" stroke="none" />
+      <path className="cut" d="M10 10.5l-2.5 2.5 2.5 2.5M14 10.5l2.5 2.5-2.5 2.5" strokeWidth={1.8} />
+    </svg>
+  ),
+  projClaude: (
+    <svg {...S} className="icon proj claude">
+      <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="currentColor" stroke="none" />
+      <path className="cut" d="M12 9.2v7.6M8.7 11.1l6.6 3.8M8.7 14.9l6.6-3.8" strokeWidth={1.8} />
+    </svg>
+  ),
 };

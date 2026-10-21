@@ -5,6 +5,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n";
 import { errorText } from "../i18n/errors";
 import { ancestorsUnder, baseName, shortenPath, treeKey, type TreeRow } from "../logic/tree";
+import { findKey, projectKind } from "../logic/projects";
 import { useTreeData } from "./useTreeData";
 import ContextMenu, { type MenuItem } from "./ContextMenu";
 import { icons } from "./icons";
@@ -14,7 +15,11 @@ type Menu = { x: number; y: number; items: MenuItem[] } | null;
 const MAX_CHIPS = 8;
 const same = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
 
-const rowIcon = (r: TreeRow) => (r.kind === "pc" ? icons.pc : r.kind === "net" ? icons.net : r.kind === "drive" ? icons.drive : icons.folder);
+const rowIcon = (r: TreeRow, proj: "claude" | "code" | null) =>
+  r.kind === "pc" ? icons.pc : r.kind === "net" ? icons.net : r.kind === "drive" ? icons.drive
+    : proj === "claude" ? icons.projClaude : proj === "code" ? icons.projCode : icons.folder;
+
+const NO_MARKS: Record<string, boolean> = {};
 
 /** Left column: recents/favourites chips, lazy folder tree from the root, and "This PC". */
 export default function FolderTree() {
@@ -28,6 +33,11 @@ export default function FolderTree() {
   const root = config?.rootFolder ?? "C:\\Desarrollo";
   const showHidden = config?.showHidden ?? false;
   const favorites = config?.favorites ?? [];
+  const marks = config?.projectMarks ?? NO_MARKS;
+  const projects = config?.projects;
+  const expandOnClick = config?.expandProjectsOnClick ?? false;
+  /** Project kind of a folder row (detection + manual marks). */
+  const projOf = (r: TreeRow) => (r.kind === "folder" && r.path ? projectKind(r.project, marks, r.path) : null);
   const { rows, expand, collapse, reveal, refresh } = useTreeData(root, showHidden);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [menu, setMenu] = useState<Menu>(null);
@@ -64,13 +74,28 @@ export default function FolderTree() {
     setFocusId(r.id);
     if (r.kind === "pc") return toggle(r);
     if (r.path) selectPath(r.path);
-    if (r.hasChildren && !r.expanded) expand(r);
+    // A project only opens with its + button, so the tree stays tidy (unless Settings says otherwise).
+    if (r.hasChildren && !r.expanded && (expandOnClick || !projOf(r))) expand(r);
   };
 
-  const folderMenu = (path: string): MenuItem[] => [
-    { label: isFav(path) ? t("tree.favRemove") : t("tree.favAdd"), icon: isFav(path) ? icons.starOff : icons.star, onSelect: () => toggleFavorite(path) },
-    { label: t("tree.openExplorer"), icon: icons.open, onSelect: () => void api.openExplorer(path).catch(showError) },
-  ];
+  const setMark = (path: string, mark: boolean | null) => {
+    const key = findKey(marks, path);
+    const next = Object.fromEntries(Object.entries(marks).filter(([k]) => k !== key));
+    void saveConfig({ projectMarks: mark === null ? next : { ...next, [path]: mark } });
+  };
+
+  const folderMenu = (path: string, detected?: "claude" | "code" | null): MenuItem[] => {
+    const marked = findKey(marks, path) !== undefined;
+    const isProj = !!projectKind(detected, marks, path);
+    return [
+      { label: isFav(path) ? t("tree.favRemove") : t("tree.favAdd"), icon: isFav(path) ? icons.starOff : icons.star, onSelect: () => toggleFavorite(path) },
+      { label: t("tree.openExplorer"), icon: icons.open, onSelect: () => void api.openExplorer(path).catch(showError) },
+      isProj
+        ? { label: t("tree.unmarkProject"), icon: icons.folder, onSelect: () => setMark(path, detected ? false : null) }
+        : { label: t("tree.markProject"), icon: icons.projCode, onSelect: () => setMark(path, detected ? null : true) },
+      ...(marked ? [{ label: t("tree.autoDetect"), icon: icons.refresh, onSelect: () => setMark(path, null) }] : []),
+    ];
+  };
 
   const openMenuAt = (el: HTMLElement, items: MenuItem[]) => {
     const r = el.getBoundingClientRect();
@@ -81,7 +106,7 @@ export default function FolderTree() {
     const cur = rows.find((r) => r.id === focusId);
     if (cur?.path && (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) {
       e.preventDefault();
-      openMenuAt(e.target as HTMLElement, folderMenu(cur.path));
+      openMenuAt(e.target as HTMLElement, folderMenu(cur.path, cur.project ?? null));
       return;
     }
     const a = treeKey(rows, focusId, e.key);
@@ -154,6 +179,8 @@ export default function FolderTree() {
           if (r.kind === "error") return <div key={r.id} className="tn err" style={pad} role="alert"><span className="car" />{icons.warn}<span className="nm">{errorText({ code: r.hint })}</span></div>;
           const sel = r.id === selId;
           const fav = r.path !== null && isFav(r.path);
+          const proj = projOf(r);
+          const own = !!r.path && !!projects && findKey(projects, r.path) !== undefined;
           return (
             <div
               key={r.id}
@@ -169,7 +196,7 @@ export default function FolderTree() {
               onClick={() => activate(r)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                if (r.path) setMenu({ x: e.clientX, y: e.clientY, items: folderMenu(r.path) });
+                if (r.path) setMenu({ x: e.clientX, y: e.clientY, items: folderMenu(r.path, r.project ?? null) });
               }}
             >
               <span
@@ -179,10 +206,25 @@ export default function FolderTree() {
                   if (r.hasChildren) toggle(r);
                 }}
               >
-                {r.hasChildren && icons.caret}
+                {r.hasChildren && !proj && icons.caret}
               </span>
-              {rowIcon(r)}
-              <span className="nm">{r.kind === "pc" ? t("tree.pc") : r.name}</span>
+              {rowIcon(r, proj)}
+              <span className="nm" title={proj ? t(proj === "claude" ? "tree.projClaude" : "tree.projCode") : undefined}>{r.kind === "pc" ? t("tree.pc") : r.name}</span>
+              {proj && r.hasChildren && (
+                <button
+                  className={`plus${r.expanded ? " open" : ""}`}
+                  tabIndex={-1}
+                  aria-label={r.expanded ? t("tree.collapse") : t("tree.expand")}
+                  title={r.expanded ? t("tree.collapse") : t("tree.expand")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggle(r);
+                  }}
+                >
+                  {r.expanded ? "−" : "+"}
+                </button>
+              )}
+              {own && <span className="pdot" title={t("tree.ownOptions")} aria-label={t("tree.ownOptions")} />}
               {r.label && <span className="lbl2">{r.label}</span>}
               {r.path && (
                 <button
