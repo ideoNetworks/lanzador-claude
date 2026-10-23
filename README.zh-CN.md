@@ -4,7 +4,7 @@
 
 > 最初由 iDeo 开发 (https://ideonetworks.com) —— "Desarrollado originalmente por iDeo (https://ideonetworks.com)"
 
-Lanzador Claude（"Claude 启动器"）是一款 Windows 桌面应用，用作 **Claude Code 的启动器**。选择一个文件夹，勾选希望 Claude 如何启动（命令行参数和环境变量），然后点击 **Iniciar**（启动）：系统会在该文件夹中打开终端，并已完成全部配置。它还可以创建新项目（文件夹、`CLAUDE.md` 和 skills）。
+Lanzador Claude（"Claude 启动器"）是一款 Windows 桌面应用，用作 **Claude Code 的启动器**。选择一个文件夹，勾选希望 Claude 如何启动（命令行参数和环境变量），然后点击 **Iniciar**（启动）：系统会在该文件夹中打开终端，并已完成全部配置。它还可以创建新项目（文件夹、`CLAUDE.md` 和 skills）。You can see an artifact with a beta version of the program in https://claude.ai/artifact/CjuxR3q2XPcp7UUe53WeyN
 
 它诞生于 iDeo 的**信息技术维护**部门，由 iDeo 的**软件开发**部门开发，目标只有一个：**让所有使用 Claude Code 的人过得更愉快**。
 
