@@ -6,7 +6,7 @@
 
 Lanzador Claude es una aplicación de escritorio para Windows que sirve de **lanzador de Claude Code**. Eliges una carpeta, marcas cómo quieres que arranque Claude (parámetros de línea de comandos y variables de entorno) y pulsas **Iniciar**: se abre un terminal en esa carpeta con todo ya configurado. También crea proyectos nuevos (carpeta, `CLAUDE.md` y skills).
 
-Nació en el departamento de **Mantenimiento Informático** de iDeo y lo ha desarrollado el departamento de **Desarrollo de Software** de iDeo, con un objetivo: **hacer la vida más agradable a todas las personas que usan Claude Code**.
+Nació en el departamento de **Mantenimiento Informático** de iDeo y lo ha desarrollado el departamento de **Desarrollo de Software interno** de iDeo, con un objetivo: **hacer la vida más agradable a todas las personas que usan Claude Code**. Puedes ver un artefacto con el diseño en fase beta aquí: https://claude.ai/artifact/CjuxR3q2XPcp7UUe53WeyN 
 
 ## Características
 
